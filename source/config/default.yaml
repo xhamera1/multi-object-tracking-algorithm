@@ -1,0 +1,13 @@
+tracker:
+  det_conf_threshold: 0.25
+  iou_match_threshold: 0.2
+  max_center_distance: 1.6
+  max_match_cost: 0.92
+  weight_iou: 0.65
+  weight_center_distance: 0.35
+  max_age: 35
+  min_hits: 3
+  next_track_id_start: 1
+
+runtime:
+  save_only_confirmed: true
