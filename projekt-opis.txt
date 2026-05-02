@@ -1,0 +1,89 @@
+10. Projekt 2
+Śledzenie wielu obiektów (MOT - ang. Multiple Object Tracking) jest podstawowym zadaniem w systemach percepcji opartych na wizji komputerowej. Umożliwia pozyskanie
+informacji o trajektorii obiektów znajdujących się na scenie, co pozwala na unikanie kolizji lub namierzanie konkretnego celu – rys. 10.1. Wykorzystywane jest między innymi w
+pojazdach autonomicznych, zaawansowanym monitoringu wizyjnym i systemach celowania.
+Ponieważ nie jest z góry znane, ile będzie śledzonych obiektów, ani kiedy one się pojawią, zadanie śledzenia obiektów wymaga pewnego systemu detekcji. Zadanie sprowadza
+się wówczas do zdecydowania, którym z dotychczas zaobserwowanych obiektów jest każda
+z uzyskanych detekcji. System śledzenia powinien jednakże rozważyć szereg scenariuszy,
+które mogą wystąpić w tak zdefiniowanym zadaniu, są to między innymi:
+• Detekcja może nie być żadnym ze znanych obiektów ponieważ nowy obiekt właśnie
+się pojawił na scenie.
+• Detekcja może być błędem detektora (false positive).
+• Obiekt może ciągle znajdować się na scenie i być widoczny, ale nie został w danej
+klatce wykryty przez detektor (false negative).
+• Jeden obiekt może być przesłonięty przez drugi i jedna detekcja może pokrywać się z
+pozycją dwóch obiektów. System śledzenia może wówczas pomylić tożsamości dwóch
+obiektów (identity switch).
+10.1 Cel projektu
+Celem projektu jest opracowanie algorytmu śledzenia wielu obiektów w oparciu o predefiniowany zbiór detekcji. Dzięki temu skoncentorować się można na samym zadaniu śledzenia
+i uniezależnić wpływ detektora na jakość całego systemu w trakcie ewaluacji skuteczności.
+Jedną z najpopularniejszych metod ewaluacji jakości śledzenia jest metryka MOTA (ang.
+Multiple Object Tracking Accuracy).
+98 Rozdział 10. Projekt 2
+Rysunek 10.1: Zadanie śledzenia wielu obiektów.
+MOT A = 1−
+P
+t
+(F Nt +F Pt +IDSWt)
+P
+t
+gt
+(10.1)
+gdzie t - klatki sekwencji testowej, F Nt - liczba false positivów, F Pt - liczba false negativów,
+IDSWt - liczba identity switchy, gt - rzeczywista liczba obiektów na kaltce t.
+W ramach projektu należy:
+• zinterpretować i zwizualizować zbiór danych.
+• zaproponować i zaimplementować algorytm śledzenia wielu obiektów. Należy zastanowić się nad podstawowymi zadaniami: inicjalizacją nowego obiektu, przypisaniem
+nowych detekcji do istniejących obiektów (na podstawie pozycji, wyglądu), usuwaniem obiektów.
+• przeprowadzić ewaluację skuteczności śledzenia.
+Zbiór danych dostępny jest pod adresem: link. W celu ewaluacji warto skorzystać z oficjalnego narzędzia wykorzystywanego we wszelkich konkursach związanych ze śledzeniem
+wielu obiektów: TrackEval - github. Udostępniony zbiór jest już w kompatybilnym formacie.
+
+
+
+codabench instrukcje:
+Zbiór danych
+Do dyspozycji mają Państwo zbiór danych podzielony na sekwencje treningowe evs_mot-train oraz testowe evs_mot-test . Dla każdej sekwencji, w folderze det znajdują się detekcje, których należy użyć do inicjalizacji algorytmu śledzenia. W folderze img1 znajdują się poszczególne klatki sekwencji, natomiast w folderze gt znajduje się wzorcowy wynik śledzenia (dostępny tyllko dla zbioru treningowego).
+
+W pliku det.txt, każda linijka oznacza jedną detekcję ludzkiej sylwetki i jest następującego formatu:
+
+
+<frame>,-1,<bb_left>,<bb_top>,<bb_width>,<bb_height>,<detection_confidence>
+Natomiast plik gt.txt:
+
+
+<frame>,<id>,<bb_left>,<bb_top>,<bb_width>,<bb_height>,<eval_flag>,<class>,<visibility>
+Gdzie:
+
+<frame> - numer klatki sekwencji (pierwsza klatka ma numer 1)
+
+<id> - unikalne id identyfikujące śledzony obiekt (istota całego zadania śledzenia)
+
+<bb_left>,<bb_top>,<bb_width>,<bb_height> - współrzędne pikselowe prostokąta otaczającego pozycję obiektu, odpowiednio: lewy bok, górny bok, szerokość, wysokość (dopuszczalne wartości zmiennoprzecinkowe)
+
+<detection_confidence> - miara pewności detektora co do detekcji (w zakresie 0 - 1)
+
+<eval_flag> - flaga informująca, czy dany obiekt jest traktowany jako wzorcowy i powinien być brany pod uwagę w ewaluacji (0 - nie, 1 - tak)
+
+<class> - klasa obiektu, interesuje nas klasa 1, czyli sylwetki ludzi, którzy nie są wewnątrz budynków i nie są odbiciami (np w szybach budynków/samochodów).
+
+<visibility> - liczba w zakresie (0 - 1] informująca, jaka część obiektu jest widoczna w danej klatce
+
+Zadanie
+Dla każdej z sekwencji testowych MOT_01, MOT_06, MOT_07 Państwa algorytm powinien wygenerować plik .txt, w którym każda linijka oznacza jedną instancję obiektu i powinna być w następującym formacie:
+
+
+<frame>,<id>,<bb_left>,<bb_top>,<bb_width>,<bb_height>,1,-1,-1,-1
+Uwaga, nie jest istotne jakie id przypiszemy do obiektu w trakcie inicjalizacji. Ważne jest, aby było one unikalne dla danego obiektu w obrębie sekwencji.
+
+Format przesyłanego rozwiązania
+Rozwiązanie to pojedynczy plik .zip, który powinien zawierać folder submission . W folderze submission powinien znajdować się folder data z wynikiem śledzenia dla każdej z sekwencji testowych oraz folder source z kodem źródłowym algorytmu użytego do generacji rzeczonego wyniku. Podsumowując, zawartość przesłanego pliku .zip powinna wyglądać następująco:
+
+
+submission/
+├──  data/
+│     ├──  MOT_01.txt
+│     ├──  MOT_06.txt
+│     └──  MOT_07.txt
+└──  source/
+       └──  ...
