@@ -11,6 +11,7 @@ Mamy gotowy:
    - `pip install -r requirements.txt`
 2. EDA:
    - `python scripts/eda_dataset.py --data-root ../data/evs_mot-train --output-dir outputs/eda`
+   - EDA interaktywne (animacje): `jupyter notebook notebooks/mot_eda.ipynb` (z `source/`)
 3. Baseline train (predykcje):
    - `PYTHONPATH=. python scripts/run_train.py --data-root ../data/evs_mot-train --output-dir outputs/train_predictions`
 4. Baseline eval (MOTA):
