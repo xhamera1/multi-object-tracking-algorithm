@@ -1,1 +1,19 @@
 data/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Python packaging (pip install -e .)
+*.egg-info/
+build/
+dist/
+.eggs/
