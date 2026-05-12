@@ -477,29 +477,11 @@ pre {
 </style>
 </head>
 <body>
-  <main><section class="slide"><div class="content"><div class="kicker">Zaawansowane Algorytmy Wizyjne</div><h1>Multi-Object<br>Tracking</h1><p class="lead" style="margin-bottom:0">Stabilne trajektorie osób z gotowych detekcji · EVS-MOT dataset</p>
-        <div class="hero-row">
-          <div class="hero-stat">
-            <span class="mono label">MOTA</span>
-            <strong class="big-num accent">50.3<span style="font-size:.55em">%</span></strong>
-          </div>
-          <div class="hero-stat">
-            <span class="mono label">sekwencje</span>
-            <strong class="big-num">4</strong>
-          </div>
-          <div class="hero-stat">
-            <span class="mono label">klatki</span>
-            <strong class="big-num">3 066</strong>
-          </div>
-          <div class="hero-stat">
-            <span class="mono label">GT bboxów</span>
-            <strong class="big-num">72 638</strong>
-          </div>
-        </div>
-        </div><span class="slide-num">01 / 13</span></section>
+  <main><section class="slide"><div class="content"><div class="kicker">Zaawansowane Algorytmy Wizyjne</div><h1>Multi-Object<br>Tracking</h1><p class="lead" style="margin-bottom:0">Mateusz Bielówka & Karol Bystrek & Patryk Chamera</p>
+        </div><span class="slide-num">01 / 12</span></section>
 <section class="slide"><div class="content"><div class="kicker">Problem</div><h1>Tracking-by-detection</h1>
-        <p class="lead">Detektor już działa — dostajemy gotowe <code>bbox + confidence</code>
-        na każdej klatce. Zadanie: przypisać <em>stabilne ID</em> tej samej osobie
+        <p class="lead">Dostajemy gotowe <code>bbox + confidence</code>
+        na każdej klatce.<br> Zadanie: przypisać <em>stabilne ID</em> tej samej osobie
         przez całą sekwencję.</p>
         <div class="grid two mt32">
           <div class="card">
@@ -519,26 +501,7 @@ pre {
             <span>skrzyżowanie torów → błędna zamiana ID</span>
           </div>
         </div>
-        </div><span class="slide-num">02 / 13</span></section>
-<section class="slide"><div class="content"><div class="kicker">Dane</div><h1>Format MOT</h1>
-        <div class="split mt24">
-          <div>
-            <p class="mono label mb8">det/det.txt — wejście</p>
-            <pre>&lt;frame&gt;, -1, bb_left, bb_top, bb_width, bb_height, conf</pre>
-            <p class="note">frame 1-based · conf ∈ [0, 1] · współrzędne float</p>
-          </div>
-          <div>
-            <p class="mono label mb8">MOT_XX.txt — wyjście</p>
-            <pre>&lt;frame&gt;, id, bb_left, bb_top, bb_width, bb_height, 1, -1, -1, -1</pre>
-            <p class="note">trailing <code>1,-1,-1,-1</code> stałe · id unikalne w sekwencji</p>
-          </div>
-        </div>
-        <div class="info-row mt28">
-          <div class="pill">Train: <code>gt/gt.txt</code> dostępne</div>
-          <div class="pill">Test: <strong>brak ground truth</strong></div>
-          <div class="pill">GT filtr: <code>eval_flag==1 &amp;&amp; class==1</code></div>
-        </div>
-        </div><span class="slide-num">03 / 13</span></section>
+        </div><span class="slide-num">02 / 12</span></section>
 <section class="slide"><div class="content"><div class="kicker">Metryka</div><h1>MOTA</h1>
         <div class="formula-block mt20">
           MOTA = 1 − <span class="frac"><span class="num">FN + FP + IDSW</span><span class="den">GT</span></span>
@@ -561,10 +524,8 @@ pre {
             <span>Ground Truth<br><em>suma bboxów referencyjnych</em></span>
           </div>
         </div>
-        <p class="note mt20">Ewaluacja lokalna: Hungarian @ IoU ≥ 0.5 per-frame.
-        IDSW = zmiana pred-id dla tej samej GT-id między kolejnymi klatkami.</p>
-        </div><span class="slide-num">04 / 13</span></section>
-<section class="slide"><div class="content"><div class="kicker">Tok rozumowania</div><h1>Jak budowałem tracker</h1>
+        </div><span class="slide-num">03 / 12</span></section>
+<section class="slide"><div class="content"><div class="kicker">Tak to zrobiliśmy</div><h1>Budowa trackera</h1>
         <ol class="timeline mt28">
           <li>
             <span class="mono step">01</span>
@@ -609,7 +570,7 @@ pre {
             </div>
           </li>
         </ol>
-        </div><span class="slide-num">05 / 13</span></section>
+        </div><span class="slide-num">04 / 12</span></section>
 <section class="slide"><div class="content"><div class="kicker">Komponent</div><h1>Filtr Kalmana</h1>
         <div class="split mt20">
           <div>
@@ -633,7 +594,7 @@ P₀ → 10·I₈  (duża niepewność)</pre>
           Predykcja utrzymuje tor aktywny przez <code>max_age = 35</code> klatek
           bez detekcji. Clamp: <code>w, h ≥ 1</code> po każdym kroku.
         </div>
-        </div><span class="slide-num">06 / 13</span></section>
+        </div><span class="slide-num">05 / 12</span></section>
 <section class="slide"><div class="content"><div class="kicker">Komponent</div><h1>Koszt asocjacji</h1>
         <div class="formula-block formula-sm mt20">
           cost = <em>w<sub>iou</sub></em>·(1−IoU) + <em>w<sub>c</sub></em>·d<sub>norm</sub>
@@ -657,7 +618,7 @@ P₀ → 10·I₈  (duża niepewność)</pre>
             <p class="note">Para nie przejdzie bram → unmatched, nawet jeśli Hungarian ją wybrał.</p>
           </div>
         </div>
-        </div><span class="slide-num">07 / 13</span></section>
+        </div><span class="slide-num">06 / 12</span></section>
 <section class="slide"><div class="content"><div class="kicker">Kluczowy pomysł</div><h1>Asocjacja dwuetapowa</h1>
         <div class="two-stage mt24">
           <div class="stage stage1">
@@ -683,7 +644,7 @@ P₀ → 10·I₈  (duża niepewność)</pre>
         </div>
         <p class="note mt20">Rozdzielenie ról: Etap 1 decyduje o nowych bytach,
         Etap 2 ratuje znane tory bez tworzenia FP.</p>
-        </div><span class="slide-num">08 / 13</span></section>
+        </div><span class="slide-num">07 / 12</span></section>
 <section class="slide"><div class="content"><div class="kicker">Cykl życia</div><h1>Init · Confirm · Delete</h1>
         <div class="lifecycle mt28">
           <div class="lc-node">
@@ -709,7 +670,7 @@ P₀ → 10·I₈  (duża niepewność)</pre>
           (<code>save_only_confirmed = true</code>).
           Próg kwalifikacji do Etapu 2 to niezależny, hardcoded <code>hits ≥ 3</code>.
         </p>
-        </div><span class="slide-num">09 / 13</span></section>
+        </div><span class="slide-num">08 / 12</span></section>
 <section class="slide"><div class="content"><div class="kicker">Optymalizacja</div><h1>Grid Search</h1>
         <p class="lead">Parametry wpływają na wzajemne kompromisy FN ↔ FP ↔ IDSW.
         Wybrałem przeszukanie siatki (vs random search) — przestrzeń jest mała, każdy wymiar mały,
@@ -745,7 +706,7 @@ P₀ → 10·I₈  (duża niepewność)</pre>
         </div>
         <p class="note mt16">3×3×3×3×2×2 = <strong>648 kombinacji</strong>.
         Kryterium: <code>overall["mota"]</code> z lokalnego ewaluatora.</p>
-        </div><span class="slide-num">10 / 13</span></section>
+        </div><span class="slide-num">09 / 12</span></section>
 <section class="slide"><div class="content"><div class="kicker">Najlepsza konfiguracja</div><h1>config/default.yaml</h1>
         <div class="config-grid mt24">
           <div class="cfg-group">
@@ -772,7 +733,7 @@ P₀ → 10·I₈  (duża niepewność)</pre>
             <div class="cfg-row"><code>save_only_confirmed</code><strong>true</strong></div>
           </div>
         </div>
-        </div><span class="slide-num">11 / 13</span></section>
+        </div><span class="slide-num">10 / 12</span></section>
 <section class="slide"><div class="content"><div class="kicker">Wyniki — train</div><h1>MOTA 50.3%</h1>
         <div class="results-top mt20">
           <div class="big-result">
@@ -800,7 +761,7 @@ P₀ → 10·I₈  (duża niepewność)</pre>
         </div>
         <p class="note mt16">FN dominuje — tracker traci osoby zasłonięte lub słabo widoczne.
         MOT_05 ma więcej FP i IDSW: gęstsza scena.</p>
-        </div><span class="slide-num">12 / 13</span></section>
+        </div><span class="slide-num">11 / 12</span></section>
 <section class="slide"><div class="content"><div class="kicker">Podsumowanie</div><h1>Modularny, mierzalny,<br>odtwarzalny</h1>
         <div class="grid two mt28">
           <div class="card">
@@ -824,6 +785,6 @@ P₀ → 10·I₈  (duża niepewność)</pre>
             interpolacja luk; submission na Codabench</span>
           </div>
         </div>
-        </div><span class="slide-num">13 / 13</span></section></main>
+        </div><span class="slide-num">12 / 12</span></section></main>
 </body>
 </html>

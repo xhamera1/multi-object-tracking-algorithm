@@ -20,26 +20,8 @@ SLIDES: list[dict] = [
     {
         "kicker": "Zaawansowane Algorytmy Wizyjne",
         "title": "Multi-Object<br>Tracking",
-        "subtitle": "Stabilne trajektorie osób z gotowych detekcji · EVS-MOT dataset",
+        "subtitle": "Mateusz Bielówka & Karol Bystrek & Patryk Chamera",
         "body": """
-        <div class="hero-row">
-          <div class="hero-stat">
-            <span class="mono label">MOTA</span>
-            <strong class="big-num accent">50.3<span style="font-size:.55em">%</span></strong>
-          </div>
-          <div class="hero-stat">
-            <span class="mono label">sekwencje</span>
-            <strong class="big-num">4</strong>
-          </div>
-          <div class="hero-stat">
-            <span class="mono label">klatki</span>
-            <strong class="big-num">3 066</strong>
-          </div>
-          <div class="hero-stat">
-            <span class="mono label">GT bboxów</span>
-            <strong class="big-num">72 638</strong>
-          </div>
-        </div>
         """,
     },
 
@@ -48,8 +30,8 @@ SLIDES: list[dict] = [
         "kicker": "Problem",
         "title": "Tracking-by-detection",
         "body": """
-        <p class="lead">Detektor już działa — dostajemy gotowe <code>bbox + confidence</code>
-        na każdej klatce. Zadanie: przypisać <em>stabilne ID</em> tej samej osobie
+        <p class="lead">Dostajemy gotowe <code>bbox + confidence</code>
+        na każdej klatce.<br> Zadanie: przypisać <em>stabilne ID</em> tej samej osobie
         przez całą sekwencję.</p>
         <div class="grid two mt32">
           <div class="card">
@@ -73,29 +55,29 @@ SLIDES: list[dict] = [
     },
 
     # 03 ─────────────────────────────────────────────────────────────────────
-    {
-        "kicker": "Dane",
-        "title": "Format MOT",
-        "body": """
-        <div class="split mt24">
-          <div>
-            <p class="mono label mb8">det/det.txt — wejście</p>
-            <pre>&lt;frame&gt;, -1, bb_left, bb_top, bb_width, bb_height, conf</pre>
-            <p class="note">frame 1-based · conf ∈ [0, 1] · współrzędne float</p>
-          </div>
-          <div>
-            <p class="mono label mb8">MOT_XX.txt — wyjście</p>
-            <pre>&lt;frame&gt;, id, bb_left, bb_top, bb_width, bb_height, 1, -1, -1, -1</pre>
-            <p class="note">trailing <code>1,-1,-1,-1</code> stałe · id unikalne w sekwencji</p>
-          </div>
-        </div>
-        <div class="info-row mt28">
-          <div class="pill">Train: <code>gt/gt.txt</code> dostępne</div>
-          <div class="pill">Test: <strong>brak ground truth</strong></div>
-          <div class="pill">GT filtr: <code>eval_flag==1 &amp;&amp; class==1</code></div>
-        </div>
-        """,
-    },
+    # {
+    #     "kicker": "Dane",
+    #     "title": "Format MOT",
+    #     "body": """
+    #     <div class="split mt24">
+    #       <div>
+    #         <p class="mono label mb8">det/det.txt — wejście</p>
+    #         <pre>&lt;frame&gt;, -1, bb_left, bb_top, bb_width, bb_height, conf</pre>
+    #         <p class="note">frame 1-based · conf ∈ [0, 1] · współrzędne float</p>
+    #       </div>
+    #       <div>
+    #         <p class="mono label mb8">MOT_XX.txt — wyjście</p>
+    #         <pre>&lt;frame&gt;, id, bb_left, bb_top, bb_width, bb_height, 1, -1, -1, -1</pre>
+    #         <p class="note">trailing <code>1,-1,-1,-1</code> stałe · id unikalne w sekwencji</p>
+    #       </div>
+    #     </div>
+    #     <div class="info-row mt28">
+    #       <div class="pill">Train: <code>gt/gt.txt</code> dostępne</div>
+    #       <div class="pill">Test: <strong>brak ground truth</strong></div>
+    #       <div class="pill">GT filtr: <code>eval_flag==1 &amp;&amp; class==1</code></div>
+    #     </div>
+    #     """,
+    # },
 
     # 04 ─────────────────────────────────────────────────────────────────────
     {
@@ -123,15 +105,13 @@ SLIDES: list[dict] = [
             <span>Ground Truth<br><em>suma bboxów referencyjnych</em></span>
           </div>
         </div>
-        <p class="note mt20">Ewaluacja lokalna: Hungarian @ IoU ≥ 0.5 per-frame.
-        IDSW = zmiana pred-id dla tej samej GT-id między kolejnymi klatkami.</p>
         """,
     },
 
     # 05 ─────────────────────────────────────────────────────────────────────
     {
-        "kicker": "Tok rozumowania",
-        "title": "Jak budowałem tracker",
+        "kicker": "Tak to zrobiliśmy",
+        "title": "Budowa trackera",
         "body": """
         <ol class="timeline mt28">
           <li>
