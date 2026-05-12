@@ -478,7 +478,7 @@ pre {
 </head>
 <body>
   <main><section class="slide"><div class="content"><div class="kicker">Zaawansowane Algorytmy Wizyjne</div><h1>Multi-Object<br>Tracking</h1><p class="lead" style="margin-bottom:0">Mateusz Bielówka & Karol Bystrek & Patryk Chamera</p>
-        </div><span class="slide-num">01 / 12</span></section>
+        </div><span class="slide-num">01 / 13</span></section>
 <section class="slide"><div class="content"><div class="kicker">Problem</div><h1>Tracking-by-detection</h1>
         <p class="lead">Dostajemy gotowe <code>bbox + confidence</code>
         na każdej klatce.<br> Zadanie: przypisać <em>stabilne ID</em> tej samej osobie
@@ -486,7 +486,7 @@ pre {
         <div class="grid two mt32">
           <div class="card">
             <b>Wejście</b>
-            <span>per-frame detekcje z kwalifikacją konfidensu</span>
+            <span>per-frame detekcje z kwalifikacją pewności</span>
           </div>
           <div class="card">
             <b>Wyjście</b>
@@ -501,7 +501,7 @@ pre {
             <span>skrzyżowanie torów → błędna zamiana ID</span>
           </div>
         </div>
-        </div><span class="slide-num">02 / 12</span></section>
+        </div><span class="slide-num">02 / 13</span></section>
 <section class="slide"><div class="content"><div class="kicker">Metryka</div><h1>MOTA</h1>
         <div class="formula-block mt20">
           MOTA = 1 − <span class="frac"><span class="num">FN + FP + IDSW</span><span class="den">GT</span></span>
@@ -524,111 +524,140 @@ pre {
             <span>Ground Truth<br><em>suma bboxów referencyjnych</em></span>
           </div>
         </div>
-        </div><span class="slide-num">03 / 12</span></section>
+        </div><span class="slide-num">03 / 13</span></section>
 <section class="slide"><div class="content"><div class="kicker">Tak to zrobiliśmy</div><h1>Budowa trackera</h1>
         <ol class="timeline mt28">
           <li>
             <span class="mono step">01</span>
             <div>
-              <b>Baseline IoU + Hungarian</b>
-              <span>minimalne FP/FN przez globalne przypisanie na każdej klatce</span>
+              <b>Baseline — IoU + algorytm węgierski</b>
+              <span>Każda detekcja przypisana do najlepszego toru globalnie (minimalizacja sumy kosztów).
+              IoU mierzy stopień nakładania bboxów — punkt startowy każdego trackera TBD.</span>
             </div>
           </li>
           <li>
             <span class="mono step">02</span>
             <div>
-              <b>Filtr Kalmana</b>
-              <span>predykcja pozycji między klatkami — tracker przeżywa chwilowy brak detekcji</span>
+              <b>Filtr Kalmana — predykcja ruchu</b>
+              <span>8-wymiarowy model stałej prędkości (pozycja + prędkość) przewiduje bbox
+              na każdej klatce. Tor pozostaje aktywny nawet gdy detekcja chwilowo zanika
+              (zasłonięcie, niska jakość kadru).</span>
             </div>
           </li>
           <li>
             <span class="mono step">03</span>
             <div>
-              <b>Koszt mieszany IoU + centroid</b>
-              <span>same IoU może mylić obiekty o podobnym nakładaniu; dystans centrów dodaje lokalizację</span>
+              <b>Koszt mieszany — IoU + znormalizowany dystans centroidów</b>
+              <span>Sama IoU zawodzi przy gęstych scenach — obiekty blisko siebie mają zbliżone nakładanie.
+              Dodanie dystansu centroidów (skalowanego przekątną bboxów) pozwala odróżnić tory, które IoU
+              traktuje identycznie.</span>
             </div>
           </li>
           <li>
             <span class="mono step">04</span>
             <div>
-              <b>Gating</b>
-              <span>odrzucamy pary, które Hungarian sparował "siłą" mimo dużego kosztu</span>
+              <b>Gating — trzy niezależne bramy akceptacji</b>
+              <span>Algorytm węgierski zawsze zwróci pary — nawet bezsensowne, gdy nie ma lepszych.
+              Trzy bramy (min. IoU, max. dystans centroidów, max. koszt łączny) odrzucają
+              przypisania poniżej progu jakości.</span>
             </div>
           </li>
           <li>
             <span class="mono step">05</span>
             <div>
-              <b>Dwuetapowa asocjacja (high / low conf)</b>
-              <span>oddzielenie nowych torów od ratowania istniejących → mniej FP i FN jednocześnie</span>
+              <b>Dwuetapowa asocjacja — high-conf i low-conf</b>
+              <span>Podejście inspirowane ByteTrack: pewne detekcje (Etap 1) decydują o nowych torach,
+              słabe (Etap 2) ratują <em>już potwierdzone</em> tory bez ryzyka tworzenia FP.
+              Rozdzielenie ról zmniejsza jednocześnie FN i FP.</span>
             </div>
           </li>
           <li>
             <span class="mono step">06</span>
             <div>
-              <b>Grid search parametrów</b>
-              <span>iloczyn kartezjański 6 parametrów, MOTA jako kryterium</span>
+              <b>Grid search — systematyczna optymalizacja hiperparametrów</b>
+              <span>Kartezjański iloczyn 6 parametrów (648 kombinacji), każda uruchomiona
+              na całym zbiorze treningowym. Kryterium: MOTA z lokalnego ewaluatora.
+              Deterministyczny, w pełni odtwarzalny.</span>
             </div>
           </li>
         </ol>
-        </div><span class="slide-num">04 / 12</span></section>
+        </div><span class="slide-num">04 / 13</span></section>
 <section class="slide"><div class="content"><div class="kicker">Komponent</div><h1>Filtr Kalmana</h1>
-        <div class="split mt20">
+        <p class="lead" style="font-size:16px; margin-bottom:18px">
+          Rekurencyjny estymator stanu — łączy model ruchu (predykcję) z obserwacją (detekcją),
+          ważąc je według ich niepewności. Dzięki predykcji tracker utrzymuje aktywny tor przez
+          całe <code>max_age</code> klatek bez detekcji, zamiast natychmiast tracić obiekt.
+          Model <b>stałej prędkości (CV)</b> — prosty, ale wystarczający dla ruchu pieszych.
+        </p>
+        <div class="split">
           <div>
-            <p class="mono label mb8">stan (8D)</p>
+            <p class="mono label mb8">wektor stanu (8D)</p>
             <pre>x = [x, y, w, h, vx, vy, vw, vh]</pre>
-            <p class="note">Model stałej prędkości (CV).
+            <p class="note">Pozycja lewego górnego rogu + rozmiar bbox + ich prędkości.
             Δt = 1 klatka.</p>
             <p class="mono label mb8 mt20">pomiar (4D)</p>
-            <pre>z = [x, y, w, h]</pre>
+            <pre>z = [x, y, w, h]   ← tylko bbox z detekcji</pre>
           </div>
           <div>
-            <p class="mono label mb8">macierze</p>
-            <pre>F  → I₈ + diag(1,1,1,1) na off-diag [0,4]..[3,7]
-H  → I₄ | 0₄  (picks x,y,w,h)
-Q  → diag: pos×0.05 vel×0.01
-R  → I₄
-P₀ → 10·I₈  (duża niepewność)</pre>
+            <p class="mono label mb8">macierze modelu</p>
+            <pre>F  → I₈ + [pos ← pos + vel] na off-diag
+H  → I₄ | 0₄   (obserwujemy tylko pozycję)
+Q  → diag: pos×0.05,  vel×0.01
+R  → I₄        (szum pomiaru)
+P₀ → 10·I₈    (duża startowa niepewność)</pre>
           </div>
         </div>
-        <div class="callout mt24">
-          Predykcja utrzymuje tor aktywny przez <code>max_age = 35</code> klatek
-          bez detekcji. Clamp: <code>w, h ≥ 1</code> po każdym kroku.
+        <div class="callout mt20">
+          Predykcja utrzymuje tor aktywny przez <code>max_age = 35</code> klatek bez detekcji.
+          Po każdym kroku: clamp <code>w, h ≥ 1</code> (zapobiega degeneracji bbox).
         </div>
-        </div><span class="slide-num">05 / 12</span></section>
+        </div><span class="slide-num">05 / 13</span></section>
 <section class="slide"><div class="content"><div class="kicker">Komponent</div><h1>Koszt asocjacji</h1>
-        <div class="formula-block formula-sm mt20">
+        <p class="lead" style="font-size:16px; margin-bottom:16px">
+          Algorytm węgierski wyznacza <b>globalne optymalne przypisanie
+          one-to-one</b> torów do detekcji — minimalizuje sumaryczny koszt, nie każdą parę z osobna.
+          Łączymy dwa sygnały: <em>nakładanie bboxów</em> (IoU) oraz <em>odległość centroidów</em> —
+          razem są bardziej odporne na błędne przypisania przy gęstych scenach niż samo IoU.
+        </p>
+        <div class="formula-block formula-sm">
           cost = <em>w<sub>iou</sub></em>·(1−IoU) + <em>w<sub>c</sub></em>·d<sub>norm</sub>
+          &nbsp;&nbsp;[<em>w<sub>iou</sub></em>=0.65, <em>w<sub>c</sub></em>=0.35]
         </div>
-        <div class="split mt24">
+        <div class="split mt20">
           <div>
             <p class="mono label mb8">normalizacja odległości centrum</p>
             <pre>d_norm = min(1,
-  euclidean(c_track, c_det)
+  dist(c_track, c_det)
   / max(1, 0.5·(diag_t + diag_d))
 )</pre>
-            <p class="note">Skalowana przekątną bboxów → niezależna od rozmiaru.</p>
+            <p class="note">Skalowanie przekątną bboxów → miara niezależna od rozmiaru obiektu.</p>
           </div>
           <div>
-            <p class="mono label mb8">trzy bramy (gating)</p>
+            <p class="mono label mb8">trzy bramy (gating) — po przypisaniu</p>
             <div class="gate-list">
-              <div class="gate"><code>IoU ≥ iou_threshold</code></div>
-              <div class="gate"><code>d_center ≤ max_center_distance</code></div>
-              <div class="gate"><code>cost ≤ max_match_cost</code></div>
+              <div class="gate"><code>IoU ≥ 0.15</code> — minimalne nakładanie</div>
+              <div class="gate"><code>d_center ≤ 1.6</code> — maks. dystans centroidów</div>
+              <div class="gate"><code>cost ≤ 0.92</code> — łączny koszt</div>
             </div>
-            <p class="note">Para nie przejdzie bram → unmatched, nawet jeśli Hungarian ją wybrał.</p>
+            <p class="note">Pary poniżej progów → odrzucone jako unmatched, mimo wyniku Węgierskiego.</p>
           </div>
         </div>
-        </div><span class="slide-num">06 / 12</span></section>
+        </div><span class="slide-num">06 / 13</span></section>
 <section class="slide"><div class="content"><div class="kicker">Kluczowy pomysł</div><h1>Asocjacja dwuetapowa</h1>
-        <div class="two-stage mt24">
+        <p class="lead" style="font-size:16px; margin-bottom:16px">
+          Podejście inspirowane <b>ByteTrack</b>: detekcje dzielimy według pewności i traktujemy różnie.
+          Pewne detekcje budują nowe tory i wykonują główne przypisanie; słabe służą <em>wyłącznie</em>
+          do ratowania już istniejących, potwierdzonych torów — bez ryzyka tworzenia FP z szumu detektora.
+        </p>
+        <div class="two-stage">
           <div class="stage stage1">
             <p class="mono label">Etap 1 — high conf</p>
             <p class="stage-thresh">conf ≥ <strong>0.30</strong></p>
             <ul>
-              <li>Wszystkie tory vs high detekcje</li>
-              <li>Koszt mieszany: IoU + centroid</li>
-              <li>Trzy bramy (IoU, center, cost)</li>
-              <li>Nieużyte high dety → <strong>nowe tory</strong></li>
+              <li>Wszystkie aktywne tory vs detekcje high-conf</li>
+              <li>Koszt mieszany: <code>w·(1−IoU) + w·d_norm</code></li>
+              <li>Trzy bramy: IoU, dystans centrum, koszt łączny</li>
+              <li>Niesparowane high dety → <strong>nowe tory</strong></li>
             </ul>
           </div>
           <div class="stage-arrow">→</div>
@@ -636,41 +665,45 @@ P₀ → 10·I₈  (duża niepewność)</pre>
             <p class="mono label">Etap 2 — low conf recovery</p>
             <p class="stage-thresh">0.05 ≤ conf &lt; 0.30</p>
             <ul>
-              <li>Tylko <em>potwierdzone</em> tory (hits ≥ 3)</li>
-              <li>Tylko IoU, brama <code>iou_low = 0.6</code></li>
-              <li>Nieużyte low dety → <strong>odrzucone</strong></li>
+              <li>Tylko <em>potwierdzone</em> tory (hits ≥ 3) — bez nowych</li>
+              <li>Tylko IoU (brama: <code>IoU ≥ 0.60</code>, rygorystyczna)</li>
+              <li>Niesparowane low dety → <strong>odrzucone</strong> (nie tworzą torów)</li>
             </ul>
           </div>
         </div>
-        <p class="note mt20">Rozdzielenie ról: Etap 1 decyduje o nowych bytach,
-        Etap 2 ratuje znane tory bez tworzenia FP.</p>
-        </div><span class="slide-num">07 / 12</span></section>
+        <p class="note mt16">Rozdzielenie ról: Etap 1 zarządza nowymi bytami (FP/FN),
+        Etap 2 ratuje zasłonięte / przejściowo słabe obiekty bez ryzyka tworzenia duchów.</p>
+        </div><span class="slide-num">07 / 13</span></section>
 <section class="slide"><div class="content"><div class="kicker">Cykl życia</div><h1>Init · Confirm · Delete</h1>
-        <div class="lifecycle mt28">
+        <p class="lead" style="font-size:16px; margin-bottom:20px">
+          Zarządzanie cyklem życia to filtr jakości torów: nowe tory muszą
+          „udowodnić" istnienie przez kilka kolejnych klatek zanim pojawią się w wynikach
+          (eliminacja FP z chwilowych błędów detekcji), a zbyt długo niewidziane tory
+          są usuwane (uwalniamy ID, eliminujemy duchy).
+        </p>
+        <div class="lifecycle">
           <div class="lc-node">
             <span class="mono label">INIT</span>
-            <p>Nowa high-conf detekcja bez pary → nowy tor, <code>hits = 1</code></p>
+            <p>Nowa high-conf detekcja bez pary tworzy tor.<br>
+            <code>hits = 1</code>, <code>time_since_update = 0</code>.<br>
+            Nie emitowany jeszcze w wynikach.</p>
           </div>
           <div class="lc-arrow">→</div>
           <div class="lc-node accent-node">
             <span class="mono label">CONFIRMED</span>
-            <p><code>hits ≥ min_hits (2)</code><br>
-            Emitowany w wynikach.<br>
-            Kwalifikuje do Etapu 2 przy <code>hits ≥ 3</code> (hardcoded).</p>
+            <p>Tor pojawia się w wynikach gdy <code>hits ≥ min_hits (2)</code>.<br>
+            Kwalifikuje do low-conf rescue (Etap 2) po <code>hits ≥ 3</code>.<br>
+            Każda pomyślna asocjacja: <code>hits += 1</code>.</p>
           </div>
           <div class="lc-arrow">→</div>
           <div class="lc-node">
             <span class="mono label">DELETED</span>
-            <p><code>time_since_update &gt; max_age (35)</code><br>
-            Tor usunięty ze stanu trackera.</p>
+            <p>Tor usunięty gdy <code>time_since_update &gt; max_age (35)</code>.<br>
+            Filtr Kalmana „trzyma" pozycję przez 35 klatek bez detekcji.<br>
+            Zwolnione ID nie są ponownie używane.</p>
           </div>
         </div>
-        <p class="note mt20">
-          Uwaga: <code>min_hits</code> z YAML kontroluje <em>emisję</em> wyników
-          (<code>save_only_confirmed = true</code>).
-          Próg kwalifikacji do Etapu 2 to niezależny, hardcoded <code>hits ≥ 3</code>.
-        </p>
-        </div><span class="slide-num">08 / 12</span></section>
+        </div><span class="slide-num">08 / 13</span></section>
 <section class="slide"><div class="content"><div class="kicker">Optymalizacja</div><h1>Grid Search</h1>
         <p class="lead">Parametry wpływają na wzajemne kompromisy FN ↔ FP ↔ IDSW.
         Wybrałem przeszukanie siatki (vs random search) — przestrzeń jest mała, każdy wymiar mały,
@@ -706,11 +739,11 @@ P₀ → 10·I₈  (duża niepewność)</pre>
         </div>
         <p class="note mt16">3×3×3×3×2×2 = <strong>648 kombinacji</strong>.
         Kryterium: <code>overall["mota"]</code> z lokalnego ewaluatora.</p>
-        </div><span class="slide-num">09 / 12</span></section>
+        </div><span class="slide-num">09 / 13</span></section>
 <section class="slide"><div class="content"><div class="kicker">Najlepsza konfiguracja</div><h1>config/default.yaml</h1>
         <div class="config-grid mt24">
           <div class="cfg-group">
-            <p class="mono label mb8">progi konfidensu</p>
+            <p class="mono label mb8">progi pewności</p>
             <div class="cfg-row"><code>det_conf_threshold</code><strong>0.30</strong></div>
             <div class="cfg-row"><code>det_low_conf_threshold</code><strong>0.05</strong></div>
           </div>
@@ -733,7 +766,7 @@ P₀ → 10·I₈  (duża niepewność)</pre>
             <div class="cfg-row"><code>save_only_confirmed</code><strong>true</strong></div>
           </div>
         </div>
-        </div><span class="slide-num">10 / 12</span></section>
+        </div><span class="slide-num">10 / 13</span></section>
 <section class="slide"><div class="content"><div class="kicker">Wyniki — train</div><h1>MOTA 50.3%</h1>
         <div class="results-top mt20">
           <div class="big-result">
@@ -761,30 +794,33 @@ P₀ → 10·I₈  (duża niepewność)</pre>
         </div>
         <p class="note mt16">FN dominuje — tracker traci osoby zasłonięte lub słabo widoczne.
         MOT_05 ma więcej FP i IDSW: gęstsza scena.</p>
-        </div><span class="slide-num">11 / 12</span></section>
-<section class="slide"><div class="content"><div class="kicker">Podsumowanie</div><h1>Modularny, mierzalny,<br>odtwarzalny</h1>
-        <div class="grid two mt28">
-          <div class="card">
-            <b>Modularność</b>
-            <span><code>mot/io · kalman · geometry · association · tracker · postprocess</code>
-            — każda warstwa wymienialna niezależnie</span>
+        </div><span class="slide-num">11 / 13</span></section>
+<section class="slide"><div class="content"><div class="kicker">Wyniki — test (Codabench)</div><h1>MOTA 42.4%</h1>
+        <div class="results-top mt20">
+          <div class="big-result">
+            <span class="mono label">Overall MOTA</span>
+            <strong class="big-num accent">42.4<span style="font-size:.5em">%</span></strong>
           </div>
-          <div class="card">
-            <b>Odtwarzalność</b>
-            <span>pełna konfiguracja w <code>config/default.yaml</code>;
-            deterministic pipeline; CLI skrypty</span>
-          </div>
-          <div class="card">
-            <b>Diagnostyka</b>
-            <span>lokalny ewaluator zwraca FN/FP/IDSW per-sekwencja
-            — wiadomo gdzie tracić</span>
-          </div>
-          <div class="card">
-            <b>Kolejne kroki</b>
-            <span>appearance features (Re-ID) do redukcji IDSW;
-            interpolacja luk; submission na Codabench</span>
+          <div class="err-pills">
+            <div class="err-pill fn-pill"><span class="mono">FN</span><strong>21 069</strong><em>dominujący błąd</em></div>
+            <div class="err-pill fp-pill"><span class="mono">FP</span><strong>1 344</strong></div>
+            <div class="err-pill sw-pill"><span class="mono">IDSW</span><strong>421</strong></div>
           </div>
         </div>
-        </div><span class="slide-num">12 / 12</span></section></main>
+        <div class="seq-table mt28">
+          <div class="seq-header mono">sekwencja</div>
+          <div class="seq-header mono">MOTA</div>
+          <div class="seq-header mono">FN</div>
+          <div class="seq-header mono">FP</div>
+          <div class="seq-header mono">IDSW</div>
+
+          <div>MOT_01</div><div class="warn-text">32.7%</div><div>12 200</div><div>241</div><div>71</div>
+          <div>MOT_06</div><div class="accent-text">56.5%</div><div>3 848</div><div>195</div><div>57</div>
+          <div>MOT_07</div><div>46.6%</div><div>5 021</div><div>908</div><div>293</div>
+        </div>
+        <p class="note mt16">MOT_01 — scena o wysokiej gęstości, tracker traci więcej obiektów (FN dominuje).
+        MOT_07 — wyraźnie więcej FP i IDSW: dynamiczna scena, częste skrzyżowania torów.</p>
+        </div><span class="slide-num">12 / 13</span></section>
+<section class="slide"><div class="content"><div class="kicker">Koniec</div><h1>Dziękujemy za uwagę</h1><p class="lead" style="margin-bottom:0">Mateusz Bielówka & Karol Bystrek & Patryk Chamera</p></div><span class="slide-num">13 / 13</span></section></main>
 </body>
 </html>
