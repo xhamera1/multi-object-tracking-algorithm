@@ -3,6 +3,8 @@
 **Multiple object tracking (MOT)** from fixed public detections: each frame provides bounding boxes and detector confidence; the tracker must assign **consistent identities** across the whole sequence. This repository implements a **tracking-by-detection** pipeline with a Kalman motion model, Hungarian data association, **IoU + centroid distance** costs, **gating**, and a **two-stage** association scheme inspired by ByteTrack, tuned via **grid search** on the training split.
 
 **Authors:** Patryk Chamera, Mateusz Bielówka, Karol Bystrek
+
+
 **Context:** Advanced computer-vision course project (Codabench-style benchmark: `evs_mot-train` / `evs_mot-test`). A slide deck summarizing the approach and metrics is in [`PRESENTATION.pdf`](PRESENTATION.pdf).
 
 ---
@@ -14,9 +16,9 @@
 
 Quality is summarized by **MOTA** (Multiple Object Tracking Accuracy):
 
-\[
+$$
 \text{MOTA} = 1 - \frac{\mathrm{FN} + \mathrm{FP} + \mathrm{IDSW}}{\mathrm{GT}}
-\]
+$$
 
 where **FN** is missed ground-truth boxes, **FP** is predicted boxes without a match, **IDSW** counts identity switches, and **GT** is the total number of ground-truth boxes over all frames.
 
@@ -26,28 +28,28 @@ where **FN** is missed ground-truth boxes, **FP** is predicted boxes without a m
 
 ### 1. Motion model
 
-Each track keeps an **8D constant-velocity Kalman filter** on the box: state \([x, y, w, h, v_x, v_y, v_w, v_h]\), measurement \([x, y, w, h]\). Prediction runs every frame so tracks can stay alive for several frames without a detection (`max_age`). Width and height are clamped to at least 1 pixel after predict/update to avoid degenerate boxes.
+Each track keeps an **8D constant-velocity Kalman filter** on the box: state $[x, y, w, h, v_x, v_y, v_w, v_h]$, measurement $[x, y, w, h]$. Prediction runs every frame so tracks can stay alive for several frames without a detection (`max_age`). Width and height are clamped to at least 1 pixel after predict/update to avoid degenerate boxes.
 
 ### 2. Association cost and gating
 
 Assignments use the **Hungarian algorithm** on a **combined cost**:
 
-\[
+$$
 \text{cost} = w_{\text{iou}}(1 - \text{IoU}) + w_{c}\, d_{\text{norm}}
-\]
+$$
 
-with default weights \(w_{\text{iou}} = 0.65\), \(w_{c} = 0.35\). The normalized center distance \(d_{\text{norm}}\) scales Euclidean distance between box centers by the average box diagonal so it is roughly scale-invariant.
+with default weights $w_{\text{iou}} = 0.65$, $w_{c} = 0.35$. The normalized center distance $d_{\text{norm}}$ scales Euclidean distance between box centers by the average box diagonal so it is roughly scale-invariant.
 
 Even with an optimal assignment, some pairs are implausible. **Gating** rejects matches unless all of the following hold (defaults from the tuned `config/default.yaml`):
 
-- IoU \(\geq\) `iou_match_threshold` (stage 1),
-- normalized center distance \(\leq\) `max_center_distance`,
-- combined cost \(\leq\) `max_match_cost`.
+- IoU ≥ `iou_match_threshold` (stage 1),
+- normalized center distance ≤ `max_center_distance`,
+- combined cost ≤ `max_match_cost`.
 
 ### 3. Two-stage association (ByteTrack-style)
 
-- **Stage 1 — high confidence:** detections with confidence \(\geq\) `det_conf_threshold` are matched to all active tracks using the full cost and gating. Unmatched high-confidence detections spawn **new** tracks.
-- **Stage 2 — low confidence:** detections in \([\) `det_low_conf_threshold`, `det_conf_threshold` \()\) are used **only** to recover **already confirmed** tracks (`hits ≥ 3`), with a stricter **IoU-only** match (`iou_match_threshold_low`). Unmatched low-confidence detections are discarded (they never create tracks), which limits false positives from noisy detections.
+- **Stage 1 — high confidence:** detections with confidence ≥ `det_conf_threshold` are matched to all active tracks using the full cost and gating. Unmatched high-confidence detections spawn **new** tracks.
+- **Stage 2 — low confidence:** detections with `det_low_conf_threshold` ≤ confidence < `det_conf_threshold` are used **only** to recover **already confirmed** tracks (`hits ≥ 3`), with a stricter **IoU-only** match (`iou_match_threshold_low`). Unmatched low-confidence detections are discarded (they never create tracks), which limits false positives from noisy detections.
 
 ### 4. Track lifecycle
 
