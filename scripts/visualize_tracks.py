@@ -7,6 +7,12 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 
+from scripts.defaults import (
+    DEFAULT_TRAIN_DATA_ROOT,
+    DEFAULT_TRAIN_PRED_DIR,
+    DEFAULT_VIZ_OUTPUT_DIR,
+)
+
 
 @dataclass
 class TrackRow:
@@ -31,10 +37,28 @@ class GtRow:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Visualize tracker predictions with IDs on image frames.")
-    parser.add_argument("--data-root", type=Path, required=True, help="Path to split root (train or test).")
-    parser.add_argument("--pred-dir", type=Path, required=True, help="Directory with MOT prediction txt files.")
-    parser.add_argument("--output-dir", type=Path, default=Path("outputs/visualizations"), help="Output directory.")
+    parser = argparse.ArgumentParser(
+        description="Visualize tracker predictions with IDs on image frames.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument(
+        "--data-root",
+        type=Path,
+        default=DEFAULT_TRAIN_DATA_ROOT,
+        help="Path to split root (train or test).",
+    )
+    parser.add_argument(
+        "--pred-dir",
+        type=Path,
+        default=DEFAULT_TRAIN_PRED_DIR,
+        help="Directory with MOT prediction txt files.",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=DEFAULT_VIZ_OUTPUT_DIR,
+        help="Output directory.",
+    )
     parser.add_argument(
         "--sequences",
         nargs="*",

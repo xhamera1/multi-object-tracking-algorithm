@@ -16,4 +16,6 @@ env/
 *.egg-info/
 build/
 dist/
-.eggs/
+# Competition / local artifacts
+submission/
+submission.zip

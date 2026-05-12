@@ -14,28 +14,49 @@ Projekt realizuje tracking-by-detection dla MOT (sledzenie wielu osob na podstaw
 - Etap 3: dalsza redukcja `IDSW` (tuning wag kosztu i parametrow gatingu).
 - Etap 4: finalna ewaluacja, inferencja na test i przygotowanie `submission.zip`.
 
+## Uklad repozytorium
+
+```text
+.
+├── mot/                  # pakiet trackera (Kalman, asocjacja, I/O)
+├── scripts/              # CLI + defaults.py (wspolne domyslne sciezki)
+├── config/               # default.yaml, grid_search.yaml
+├── notebooks/            # EDA w Jupyter
+├── outputs/              # predykcje, logi, wizualizacje (czesto poza Gitem)
+├── requirements.txt
+└── pyproject.toml        # opcjonalnie: pip install -e .
+```
+
 ## Jak uruchomic
 
-Wszystkie komendy uruchamiaj z katalogu `source/`.
+**Katalog roboczy:** korzen projektu (ten folder).
 
-1. Instalacja:
-   - `pip install -r requirements.txt`
-2. EDA:
-   - `PYTHONPATH=. python scripts/eda_dataset.py --data-root ../data/evs_mot-train --output-dir outputs/eda`
-3. Train (Etap 2):
-   - `PYTHONPATH=. python scripts/run_train.py --data-root ../data/evs_mot-train --output-dir outputs/train_predictions_stage2`
-4. Ewaluacja train:
-   - `PYTHONPATH=. python scripts/evaluate_train.py --pred-dir outputs/train_predictions_stage2 --gt-root ../data/evs_mot-train --output-file outputs/logs/train_eval_stage2_summary.json`
-5. Test:
-   - `PYTHONPATH=. python scripts/run_test.py --data-root ../data/evs_mot-test --output-dir outputs/test_predictions`
-6. Wizualizacje trackow:
-   - `PYTHONPATH=. python scripts/visualize_tracks.py --data-root ../data/evs_mot-train --pred-dir outputs/train_predictions_stage2 --output-dir outputs/visualizations --with-gt`
+1. Srodowisko: `pip install -r requirements.txt` (opcjonalnie `pip install -e .`).
+2. **Domyslne sciezki** zakladaja zbiory w `./data/evs_mot-train` i `./data/evs_mot-test` (patrz `scripts/defaults.py`). Inna lokalizacja → podaj odpowiednie flagi.
+
+### Szybki start (bez argumentów)
+
+| Cel | Komenda |
+|-----|---------|
+| EDA | `python -m scripts.eda_dataset` |
+| Train (predykcje train) | `python -m scripts.run_train` |
+| Ewaluacja MOTA (train) | `python -m scripts.evaluate_train` |
+| Test (MOT_01 / 06 / 07) | `python -m scripts.run_test` |
+| Wizualizacje (domyslnie train + `outputs/train_predictions`) | `python -m scripts.visualize_tracks --with-gt` |
+| Grid search (aktualizuje `config/default.yaml`) | `python -m scripts.tune_grid` |
+| Paczka `submission.zip` | `python -m scripts.package_submission` |
+
+Każdy moduł `scripts.*` ma **inne argumenty** (ścieżki danych, katalogi wyjścia itd.). Pełny opis: `python -m scripts.<nazwa> --help`. Wspólne domyślne ścieżki w repo: `scripts/defaults.py`.
+
+### Jupyter
+
+`jupyter notebook notebooks/mot_eda.ipynb` (od korzenia projektu).
 
 ## Gdzie podgladac wyniki
 
-- Raport EDA: `source/outputs/eda/EDA_REPORT.md`
-- Podglady EDA: `source/outputs/eda/*_preview.png`
-- Metryki: `source/outputs/logs/train_eval_stage2_summary.json`
-- Predykcje train: `source/outputs/train_predictions_stage2/*.txt`
-- Predykcje test: `source/outputs/test_predictions/MOT_01.txt`, `MOT_06.txt`, `MOT_07.txt`
-- Wizualizacje trackow z ID: `source/outputs/visualizations/*_tracks_preview.png`
+- Raport EDA: `outputs/eda/EDA_REPORT.md`
+- Metryki train: `outputs/logs/train_eval_summary.json` (lub inna ścieżka z `--output-file`)
+- Grid search: `outputs/logs/grid_search_results.json`
+- Predykcje train: `outputs/train_predictions/*.txt`
+- Predykcje test: `outputs/test_predictions/MOT_01.txt`, `MOT_06.txt`, `MOT_07.txt`
+- Wizualizacje: `outputs/visualizations/*_tracks_preview.png`

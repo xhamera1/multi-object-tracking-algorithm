@@ -66,10 +66,9 @@ To podejscie minimalizuje ryzyko "duzej, trudnej do debugowania implementacji" i
    - metryki przez TrackEval (w szczegolnosci MOTA),
    - raport porownawczy konfiguracji.
 
-### 3.2. Proponowana struktura katalogow (source)
+### 3.2. Struktura katalogow (korzen repozytorium)
 
 ```text
-source/
   config/
     default.yaml
   mot/
@@ -84,6 +83,7 @@ source/
     run_test.py
     evaluate_train.py
     package_submission.py
+  notebooks/
   outputs/
     train_predictions/
     test_predictions/
@@ -107,14 +107,14 @@ Deliverable:
 - skrypt EDA + krotki raport obserwacji (co moze psuc tracking).
 
 Mikroetapy zrealizowane:
-- [x] `source/scripts/eda_dataset.py` - statystyki det/gt + kontrole spojnosci + ostrzezenia.
+- [x] `scripts/eda_dataset.py` - statystyki det/gt + kontrole spojnosci + ostrzezenia.
 - [x] Automatyczny raport `outputs/eda/EDA_REPORT.md`.
 - [x] Wizualizacje pogladowe sekwencji (`*_preview.png`) z naniesionymi det (zolty) i gt (zielony).
-- [x] Aktualizacja instrukcji uruchomienia w `source/README.md`.
+- [x] Aktualizacja instrukcji uruchomienia w `README.md`.
 
 Uruchamianie Etapu 0:
-- `cd source`
-- `python scripts/eda_dataset.py --data-root <sciezka_do_evs_mot-train> --output-dir outputs/eda`
+- (katalog roboczy: korzen repozytorium) `pip install -r requirements.txt`
+- `python -m scripts.eda_dataset --data-root <sciezka_do_evs_mot-train> --output-dir outputs/eda`
 
 ## Etap 1 - Baseline tracking (MVP)
 **Cel**: miec dzialajacy system end-to-end.
@@ -132,12 +132,12 @@ Deliverable:
 - pierwsza wartosc MOTA (punkt odniesienia).
 
 Mikroetapy zrealizowane:
-- [x] Tracker baseline IoU + Hungarian (`source/mot/tracker.py`, `source/mot/association.py`).
-- [x] Reguly bazowe: `det_conf_threshold`, `min_hits`, `max_age` (`source/config/default.yaml`).
-- [x] Pelny zapis wynikow w formacie MOT (`source/mot/io.py`).
-- [x] Skrypt train inference (`source/scripts/run_train.py`) z obsluga pelnego zakresu klatek.
-- [x] Skrypt ewaluacji baseline MOTA (`source/scripts/evaluate_train.py`) i zapis JSON z metrykami.
-- [x] Wizualizacja wynikow trackera z ID na klatkach (`source/scripts/visualize_tracks.py`).
+- [x] Tracker baseline IoU + Hungarian (`mot/tracker.py`, `mot/association.py`).
+- [x] Reguly bazowe: `det_conf_threshold`, `min_hits`, `max_age` (`config/default.yaml`).
+- [x] Pelny zapis wynikow w formacie MOT (`mot/io.py`).
+- [x] Skrypt train inference (`scripts/run_train.py`) z obsluga pelnego zakresu klatek.
+- [x] Skrypt ewaluacji baseline MOTA (`scripts/evaluate_train.py`) i zapis JSON z metrykami.
+- [x] Wizualizacja wynikow trackera z ID na klatkach (`scripts/visualize_tracks.py`).
 
 Wyniki baseline (train, punkt odniesienia):
 - `OVERALL MOTA = 0.4974`
@@ -149,11 +149,10 @@ Wyniki baseline (train, punkt odniesienia):
   - `MOT_05: MOTA = 0.4591`
 
 Uruchamianie Etapu 1:
-- `cd source`
-- `pip install -r requirements.txt`
-- `PYTHONPATH=. python scripts/run_train.py --data-root ../data/evs_mot-train --output-dir outputs/train_predictions`
-- `PYTHONPATH=. python scripts/evaluate_train.py --pred-dir outputs/train_predictions --gt-root ../data/evs_mot-train --output-file outputs/logs/train_eval_summary.json`
-- (opcjonalnie test split) `PYTHONPATH=. python scripts/run_test.py --data-root ../data/evs_mot-test --output-dir outputs/test_predictions`
+- (korzen repozytorium) `pip install -r requirements.txt`
+- `python -m scripts.run_train --data-root data/evs_mot-train --output-dir outputs/train_predictions`
+- `python -m scripts.evaluate_train --pred-dir outputs/train_predictions --gt-root data/evs_mot-train --output-file outputs/logs/train_eval_summary.json`
+- (opcjonalnie test split) `python -m scripts.run_test --data-root data/evs_mot-test --output-dir outputs/test_predictions`
 
 ## Etap 2 - Ulepszenie stabilnosci torow
 **Cel**: obnizyc `FN` i `IDSW`.
@@ -169,10 +168,10 @@ Deliverable:
 - porownanie "przed/po" dla min. 2 sekwencji.
 
 Mikroetapy zrealizowane:
-- [x] Dodany filtr Kalmana (model stalej predkosci) do predykcji bbox (`source/mot/kalman.py`).
-- [x] Asocjacja oparta o koszt laczony: `w_iou * (1-IoU) + w_center * dist_center_norm` (`source/mot/association.py`).
+- [x] Dodany filtr Kalmana (model stalej predkosci) do predykcji bbox (`mot/kalman.py`).
+- [x] Asocjacja oparta o koszt laczony: `w_iou * (1-IoU) + w_center * dist_center_norm` (`mot/association.py`).
 - [x] Dodany gating na pary track-detection: minimalne IoU, maksymalny dystans centroidow, maksymalny koszt.
-- [x] Rozszerzona konfiguracja trackera o parametry kosztu i gating (`source/config/default.yaml`).
+- [x] Rozszerzona konfiguracja trackera o parametry kosztu i gating (`config/default.yaml`).
 - [x] Ewaluacja po zmianach i zapis wynikow do `outputs/logs/train_eval_stage2_summary.json`.
 
 Porownanie metryk (PRZED -> PO):
@@ -192,10 +191,9 @@ Porownanie per-sequence (min. 2):
   - IDSW: `108 -> 92`
 
 Uruchamianie Etapu 2:
-- `cd source`
-- `pip install -r requirements.txt`
-- `PYTHONPATH=. python scripts/run_train.py --data-root ../data/evs_mot-train --output-dir outputs/train_predictions_stage2`
-- `PYTHONPATH=. python scripts/evaluate_train.py --pred-dir outputs/train_predictions_stage2 --gt-root ../data/evs_mot-train --output-file outputs/logs/train_eval_stage2_summary.json`
+- (korzen repozytorium) `pip install -r requirements.txt`
+- `python -m scripts.run_train --data-root data/evs_mot-train --output-dir outputs/train_predictions_stage2`
+- `python -m scripts.evaluate_train --pred-dir outputs/train_predictions_stage2 --gt-root data/evs_mot-train --output-file outputs/logs/train_eval_stage2_summary.json`
 
 ## Etap 3 - Ograniczanie identity switchy
 **Cel**: poprawa stabilnosci ID.
@@ -217,7 +215,7 @@ Zadania:
 - ewaluacja TrackEval na train i interpretacja wynikow,
 - uruchomienie inferencji na test (`MOT_01`, `MOT_06`, `MOT_07`),
 - walidacja formatu plikow wynikowych,
-- przygotowanie `submission/` (`data/` + `source/`) i archiwum `.zip`.
+- przygotowanie `submission/` (`submission/data/` + `submission/source/` wg wymagan konkursu) i archiwum `.zip`.
 
 Deliverable:
 - gotowa paczka do oddania,
@@ -292,7 +290,7 @@ Projekt uznaje sie za gotowy, gdy:
 - [ ] TrackEval uruchamia sie bez bledow i zwraca metryki.
 - [ ] Istnieje wybrana, uzasadniona konfiguracja finalna.
 - [ ] Przygotowano `submission/data/*.txt`.
-- [ ] Przygotowano `submission/source/*` z kodem i instrukcja uruchomienia.
+- [ ] Przygotowano `submission/source/` z kodem i instrukcja uruchomienia.
 - [ ] Powstal finalny `submission.zip` gotowy do wyslania.
 
 ---

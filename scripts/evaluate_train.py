@@ -3,9 +3,16 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 from scipy.optimize import linear_sum_assignment
+
+from scripts.defaults import (
+    DEFAULT_EVAL_JSON,
+    DEFAULT_TRAIN_DATA_ROOT,
+    DEFAULT_TRAIN_PRED_DIR,
+)
 
 
 def bbox_iou(a: tuple[float, float, float, float], b: tuple[float, float, float, float]) -> float:
@@ -58,14 +65,28 @@ def read_pred_rows(path: Path) -> dict[int, list[tuple[int, tuple[float, float, 
             )
     return by_frame
 
+
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Evaluate train predictions (MOTA baseline).")
-    parser.add_argument("--pred-dir", type=Path, required=True, help="Path to train prediction .txt files.")
-    parser.add_argument("--gt-root", type=Path, required=True, help="Path to train data root with gt files.")
+    parser = argparse.ArgumentParser(
+        description="Evaluate train predictions (MOTA baseline).",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument(
+        "--pred-dir",
+        type=Path,
+        default=DEFAULT_TRAIN_PRED_DIR,
+        help="Path to train prediction .txt files.",
+    )
+    parser.add_argument(
+        "--gt-root",
+        type=Path,
+        default=DEFAULT_TRAIN_DATA_ROOT,
+        help="Path to train data root with gt files.",
+    )
     parser.add_argument(
         "--output-file",
         type=Path,
-        default=Path("outputs/logs/train_eval_summary.json"),
+        default=DEFAULT_EVAL_JSON,
         help="Where to save JSON evaluation summary.",
     )
     return parser.parse_args()
@@ -105,8 +126,7 @@ def match_frame(
     return matches, fn, fp
 
 
-def main() -> None:
-    args = parse_args()
+def evaluate_train_metrics(pred_dir: Path, gt_root: Path) -> dict[str, Any]:
     sequence_metrics: dict[str, dict[str, float]] = {}
     total_fn = 0
     total_fp = 0
@@ -114,9 +134,9 @@ def main() -> None:
     total_gt = 0
     total_frames = 0
 
-    for seq_dir in sorted(p for p in args.gt_root.iterdir() if p.is_dir()):
+    for seq_dir in sorted(p for p in gt_root.iterdir() if p.is_dir()):
         gt_file = seq_dir / "gt" / "gt.txt"
-        pred_file = args.pred_dir / f"{seq_dir.name}.txt"
+        pred_file = pred_dir / f"{seq_dir.name}.txt"
         if not gt_file.exists():
             continue
 
@@ -169,11 +189,10 @@ def main() -> None:
         total_idsw += seq_idsw
 
     if not sequence_metrics:
-        raise RuntimeError("No sequences were evaluated. Check --gt-root and prediction files.")
+        raise RuntimeError("No sequences were evaluated. Check gt_root and prediction files.")
 
-    args.output_file.parent.mkdir(parents=True, exist_ok=True)
     overall_mota = 0.0 if total_gt == 0 else 1.0 - (total_fn + total_fp + total_idsw) / total_gt
-    metrics_out = {
+    return {
         "overall": {
             "frames": float(total_frames),
             "gt_total": float(total_gt),
@@ -184,7 +203,21 @@ def main() -> None:
         },
         "per_sequence": sequence_metrics,
     }
+
+
+def main() -> None:
+    args = parse_args()
+    metrics_out = evaluate_train_metrics(args.pred_dir, args.gt_root)
+    args.output_file.parent.mkdir(parents=True, exist_ok=True)
     args.output_file.write_text(json.dumps(metrics_out, indent=2), encoding="utf-8")
+    overall = metrics_out["overall"]
+    overall_mota = overall["mota"]
+    total_fn = int(overall["fn"])
+    total_fp = int(overall["fp"])
+    total_idsw = int(overall["idsw"])
+    total_gt = int(overall["gt_total"])
+    total_frames = int(overall["frames"])
+    sequence_metrics = metrics_out["per_sequence"]
     print("Evaluation (IoU@0.5 matching):")
     print(
         f"OVERALL -> MOTA={overall_mota:.4f}, FN={total_fn}, FP={total_fp}, "

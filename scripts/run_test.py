@@ -5,19 +5,34 @@ from pathlib import Path
 
 import yaml
 
+from scripts.defaults import DEFAULT_TEST_DATA_ROOT, DEFAULT_TEST_PRED_DIR, DEFAULT_TRACKER_CONFIG
+
 from mot.io import load_detections, save_mot_results
 from mot.postprocess import sort_results
 from mot.tracker import MultiObjectTracker
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run MOT tracker on test split.")
-    parser.add_argument("--data-root", type=Path, required=True, help="Path to evs_mot-test.")
-    parser.add_argument("--output-dir", type=Path, required=True, help="Output predictions dir.")
+    parser = argparse.ArgumentParser(
+        description="Run MOT tracker on test split.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument(
+        "--data-root",
+        type=Path,
+        default=DEFAULT_TEST_DATA_ROOT,
+        help="Path to evs_mot-test.",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=DEFAULT_TEST_PRED_DIR,
+        help="Output predictions dir.",
+    )
     parser.add_argument(
         "--config",
         type=Path,
-        default=Path("config/default.yaml"),
+        default=DEFAULT_TRACKER_CONFIG,
         help="Tracker config yaml.",
     )
     return parser.parse_args()

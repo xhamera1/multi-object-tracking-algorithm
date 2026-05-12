@@ -1,0 +1,29 @@
+# Siatka hiperparametrów: każda lista → iloczyn kartezjański. Klucze muszą być
+# polami trackera / runtime (patrz scripts/tune_grid.py: TRACKER_PARAM_KEYS).
+#
+# --- Uruchomienie (korzeń repo) ---
+# Domyślnie: data/evs_mot-train, zapis JSON + nadpisanie config/default.yaml najlepszą siatką.
+#
+#   python -m scripts.tune_grid
+#
+# Tylko raport JSON, bez nadpisywania default.yaml:
+#   python -m scripts.tune_grid --no-write-config
+#
+# Inny zbiór / ścieżki: patrz python -m scripts.tune_grid --help
+#
+# Potem test (domyślnie data/evs_mot-test → outputs/test_predictions):
+#   python -m scripts.run_test
+#
+# --- Inne ---
+# --base-config ścieżka   — inny plik startowy i docelowy zapisu najlepszego wyniku
+# --grid-config ścieżka   — inna siatka niż ten plik
+# --work-dir katalog      — zostawia foldery z predykcjami prób (debug)
+# --max-trials N --force  — duża siatka
+#
+parameters:
+  det_conf_threshold: [0.2, 0.25, 0.3]
+  det_low_conf_threshold: [0.05, 0.1, 0.15]
+  iou_match_threshold: [0.15, 0.2, 0.25]
+  iou_match_threshold_low: [0.4, 0.5, 0.6]
+  max_age: [30, 35]
+  min_hits: [2, 3]

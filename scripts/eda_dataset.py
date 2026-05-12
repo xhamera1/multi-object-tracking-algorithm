@@ -9,6 +9,8 @@ from typing import Iterable
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 
+from scripts.defaults import DEFAULT_EDA_OUTPUT_DIR, DEFAULT_TRAIN_DATA_ROOT
+
 
 @dataclass
 class DetectionRow:
@@ -34,12 +36,20 @@ class GtRow:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="EDA for MOT dataset (detections + GT + visuals).")
-    parser.add_argument("--data-root", type=Path, required=True, help="Path to split root, e.g. evs_mot-train.")
+    parser = argparse.ArgumentParser(
+        description="EDA for MOT dataset (detections + GT + visuals).",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument(
+        "--data-root",
+        type=Path,
+        default=DEFAULT_TRAIN_DATA_ROOT,
+        help="Path to split root, e.g. evs_mot-train.",
+    )
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=Path("outputs/eda"),
+        default=DEFAULT_EDA_OUTPUT_DIR,
         help="Directory for report and plots.",
     )
     parser.add_argument(

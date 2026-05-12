@@ -4,12 +4,44 @@ import argparse
 import shutil
 from pathlib import Path
 
+from scripts.defaults import DEFAULT_TEST_PRED_DIR
+
+
+def _should_skip_submission_copy(path: Path) -> bool:
+    name = path.name
+    if name == "outputs":
+        return True
+    if name == "submission":
+        return True
+    if name == "submission.zip":
+        return True
+    if name in {".git", ".venv", "venv", "env", ".cursor", "__pycache__", ".pytest_cache", ".mypy_cache", ".DS_Store"}:
+        return True
+    if name == "data":
+        return True
+    if name.endswith(".egg-info"):
+        return True
+    return False
+
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Build submission.zip from data and source.")
-    parser.add_argument("--pred-dir", type=Path, required=True, help="Directory with MOT_01/06/07 .txt files.")
+    parser = argparse.ArgumentParser(
+        description="Build submission.zip from data and source.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument(
+        "--pred-dir",
+        type=Path,
+        default=DEFAULT_TEST_PRED_DIR,
+        help="Directory with MOT_01/06/07 .txt files.",
+    )
     parser.add_argument("--source-dir", type=Path, default=Path("."), help="Root source directory to include.")
-    parser.add_argument("--output-dir", type=Path, default=Path("../"), help="Where to create submission.zip.")
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=Path("."),
+        help="Directory where submission/ and submission.zip are written (default: current dir / project root).",
+    )
     return parser.parse_args()
 
 
@@ -32,7 +64,7 @@ def main() -> None:
         shutil.copy2(src, data_dir / src.name)
 
     for item in args.source_dir.iterdir():
-        if item.name == "outputs":
+        if _should_skip_submission_copy(item):
             continue
         dst = source_dir / item.name
         if item.is_dir():

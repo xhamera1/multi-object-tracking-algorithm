@@ -42,7 +42,9 @@ class MultiObjectTracker:
     def __init__(
         self,
         det_conf_threshold: float = 0.3,
+        det_low_conf_threshold: float = 0.1,
         iou_match_threshold: float = 0.3,
+        iou_match_threshold_low: float = 0.5,
         max_center_distance: float = 1.5,
         max_match_cost: float = 0.9,
         weight_iou: float = 0.7,
@@ -52,7 +54,9 @@ class MultiObjectTracker:
         next_track_id_start: int = 1,
     ) -> None:
         self.det_conf_threshold = det_conf_threshold
+        self.det_low_conf_threshold = det_low_conf_threshold
         self.iou_match_threshold = iou_match_threshold
+        self.iou_match_threshold_low = iou_match_threshold_low
         self.max_center_distance = max_center_distance
         self.max_match_cost = max_match_cost
         self.weight_iou = weight_iou
@@ -68,16 +72,21 @@ class MultiObjectTracker:
         return track
 
     def step(self, frame_detections: Sequence[Detection]) -> None:
-        dets = [d for d in frame_detections if d.confidence >= self.det_conf_threshold]
-        det_boxes: list[BBox] = [(d.x, d.y, d.w, d.h) for d in dets]
+        high_score_dets = [d for d in frame_detections if d.confidence >= self.det_conf_threshold]
+        low_score_dets = [d for d in frame_detections if self.det_low_conf_threshold <= d.confidence < self.det_conf_threshold]
+
+        high_score_boxes: list[BBox] = [(d.x, d.y, d.w, d.h) for d in high_score_dets]
+        low_score_boxes: list[BBox] = [(d.x, d.y, d.w, d.h) for d in low_score_dets]
 
         for track in self.tracks:
             track.predict()
 
         track_boxes = [t.bbox for t in self.tracks]
+        
+        # First Stage
         match_result = hungarian_match(
             track_boxes,
-            det_boxes,
+            high_score_boxes,
             iou_threshold=self.iou_match_threshold,
             max_center_distance=self.max_center_distance,
             max_cost=self.max_match_cost,
@@ -86,10 +95,33 @@ class MultiObjectTracker:
         )
 
         for track_idx, det_idx in match_result.matches:
-            self.tracks[track_idx].update(det_boxes[det_idx])
+            self.tracks[track_idx].update(high_score_boxes[det_idx])
 
+        # Second Stage
+        # For unmatched tracks, try to match with low score detections using only IoU
+        unmatched_track_indices = [
+            i for i in match_result.unmatched_tracks 
+            if self.tracks[i].is_confirmed
+        ]
+        unmatched_track_boxes = [self.tracks[i].bbox for i in unmatched_track_indices]
+        
+        match_result_low = hungarian_match(
+            unmatched_track_boxes,
+            low_score_boxes,
+            iou_threshold=self.iou_match_threshold_low,
+            max_center_distance=float('inf'),
+            max_cost=1.0,
+            weight_iou=1.0,
+            weight_center_distance=0.0,
+        )
+        
+        for local_track_idx, det_idx in match_result_low.matches:
+            track_idx = unmatched_track_indices[local_track_idx]
+            self.tracks[track_idx].update(low_score_boxes[det_idx])
+
+        # New tracks from unmatched high score dets
         for det_idx in match_result.unmatched_detections:
-            self.tracks.append(self._new_track(det_boxes[det_idx]))
+            self.tracks.append(self._new_track(high_score_boxes[det_idx]))
 
         self.tracks = [t for t in self.tracks if t.time_since_update <= self.max_age]
 
