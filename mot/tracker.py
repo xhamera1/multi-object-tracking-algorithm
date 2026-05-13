@@ -33,10 +33,6 @@ class Track:
         self.time_since_update = 0
         self.hits += 1
 
-    @property
-    def is_confirmed(self) -> bool:
-        return self.hits >= 3
-
 
 class MultiObjectTracker:
     def __init__(
@@ -47,7 +43,7 @@ class MultiObjectTracker:
         iou_match_threshold_low: float = 0.5,
         max_match_cost: float = 0.9,
         max_age: int = 30,
-        min_hits: int = 3,
+        min_hits: int = 2,
         next_track_id_start: int = 1,
     ) -> None:
         self.det_conf_threshold = det_conf_threshold
@@ -91,8 +87,7 @@ class MultiObjectTracker:
         # Second Stage
         # For unmatched tracks, try to match with low score detections using only IoU
         unmatched_track_indices = [
-            i for i in match_result.unmatched_tracks 
-            if self.tracks[i].is_confirmed
+            i for i in match_result.unmatched_tracks if self.tracks[i].hits >= self.min_hits
         ]
         unmatched_track_boxes = [self.tracks[i].bbox for i in unmatched_track_indices]
         
