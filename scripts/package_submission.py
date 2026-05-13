@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import argparse
 import shutil
+import subprocess
+import sys
 from pathlib import Path
 
-from scripts.defaults import DEFAULT_TEST_PRED_DIR
+from scripts.defaults import DEFAULT_TEST_DATA_ROOT, DEFAULT_TEST_PRED_DIR, DEFAULT_TRACKER_CONFIG
 
 
 def _should_skip_submission_copy(path: Path) -> bool:
@@ -33,7 +35,19 @@ def parse_args() -> argparse.Namespace:
         "--pred-dir",
         type=Path,
         default=DEFAULT_TEST_PRED_DIR,
-        help="Directory with MOT_01/06/07 .txt files.",
+        help="Directory with MOT_01/06/07 .txt files (run_test writes here before packaging).",
+    )
+    parser.add_argument(
+        "--data-root",
+        type=Path,
+        default=DEFAULT_TEST_DATA_ROOT,
+        help="Test split root passed to run_test.",
+    )
+    parser.add_argument(
+        "--config",
+        type=Path,
+        default=DEFAULT_TRACKER_CONFIG,
+        help="Tracker yaml passed to run_test.",
     )
     parser.add_argument("--source-dir", type=Path, default=Path("."), help="Root source directory to include.")
     parser.add_argument(
@@ -47,6 +61,20 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+
+    test_cmd = [
+        sys.executable,
+        "-m",
+        "scripts.run_test",
+        "--output-dir",
+        str(args.pred_dir),
+        "--data-root",
+        str(args.data_root),
+        "--config",
+        str(args.config),
+    ]
+    print("[package_submission]", " ".join(test_cmd))
+    subprocess.run(test_cmd, check=True)
 
     submission_root = args.output_dir / "submission"
     data_dir = submission_root / "data"
