@@ -41,7 +41,10 @@ class MultiObjectTracker:
         det_low_conf_threshold: float = 0.1,
         iou_match_threshold: float = 0.3,
         iou_match_threshold_low: float = 0.5,
+        max_center_distance: float = 1.5,
         max_match_cost: float = 0.9,
+        weight_iou: float = 0.7,
+        weight_center_distance: float = 0.3,
         max_age: int = 30,
         min_hits: int = 2,
         next_track_id_start: int = 1,
@@ -50,7 +53,10 @@ class MultiObjectTracker:
         self.det_low_conf_threshold = det_low_conf_threshold
         self.iou_match_threshold = iou_match_threshold
         self.iou_match_threshold_low = iou_match_threshold_low
+        self.max_center_distance = max_center_distance
         self.max_match_cost = max_match_cost
+        self.weight_iou = weight_iou
+        self.weight_center_distance = weight_center_distance
         self.max_age = max_age
         self.min_hits = min_hits
         self.next_track_id = next_track_id_start
@@ -78,7 +84,10 @@ class MultiObjectTracker:
             track_boxes,
             high_score_boxes,
             iou_threshold=self.iou_match_threshold,
+            max_center_distance=self.max_center_distance,
             max_cost=self.max_match_cost,
+            weight_iou=self.weight_iou,
+            weight_center_distance=self.weight_center_distance,
         )
 
         for track_idx, det_idx in match_result.matches:
@@ -95,7 +104,10 @@ class MultiObjectTracker:
             unmatched_track_boxes,
             low_score_boxes,
             iou_threshold=self.iou_match_threshold_low,
+            max_center_distance=float('inf'),
             max_cost=1.0,
+            weight_iou=1.0,
+            weight_center_distance=0.0,
         )
         
         for local_track_idx, det_idx in match_result_low.matches:

@@ -134,17 +134,18 @@ SLIDES: list[dict] = [
           <li>
             <span class="mono step">03</span>
             <div>
-              <b>Koszt asocjacji — samo IoU</b>
-              <span>Macierz kosztów oparta wyłącznie na <code>1 − IoU</code>.
-              Algorytm węgierski minimalizuje sumaryczny koszt przypisania torów do detekcji.</span>
+              <b>Koszt mieszany — IoU + znormalizowany dystans centroidów</b>
+              <span>Sama IoU zawodzi przy gęstych scenach — obiekty blisko siebie mają zbliżone nakładanie.
+              Dodanie dystansu centroidów (skalowanego przekątną bboxów) pozwala odróżnić tory, które IoU
+              traktuje identycznie.</span>
             </div>
           </li>
           <li>
             <span class="mono step">04</span>
             <div>
-              <b>Gating — dwie niezależne bramy akceptacji</b>
+              <b>Gating — trzy niezależne bramy akceptacji</b>
               <span>Algorytm węgierski zawsze zwróci pary — nawet bezsensowne, gdy nie ma lepszych.
-              Dwie bramy (min. IoU, max. koszt łączny) odrzucają
+              Trzy bramy (min. IoU, max. dystans centroidów, max. koszt łączny) odrzucają
               przypisania poniżej progu jakości.</span>
             </div>
           </li>
@@ -214,22 +215,27 @@ P₀ → 10·I₈    (duża startowa niepewność)</pre>
         <p class="lead" style="font-size:16px; margin-bottom:16px">
           Algorytm węgierski wyznacza <b>globalne optymalne przypisanie
           one-to-one</b> torów do detekcji — minimalizuje sumaryczny koszt, nie każdą parę z osobna.
-          Koszt oparty wyłącznie na <em>nakładaniu bboxów</em> (IoU) — prosty, szybki i skuteczny.
+          Łączymy dwa sygnały: <em>nakładanie bboxów</em> (IoU) oraz <em>odległość centroidów</em> —
+          razem są bardziej odporne na błędne przypisania przy gęstych scenach niż samo IoU.
         </p>
         <div class="formula-block formula-sm">
-          cost = 1 − IoU
+          cost = <em>w<sub>iou</sub></em>·(1−IoU) + <em>w<sub>c</sub></em>·d<sub>norm</sub>
+          &nbsp;&nbsp;[<em>w<sub>iou</sub></em>=0.65, <em>w<sub>c</sub></em>=0.35]
         </div>
         <div class="split mt20">
           <div>
-            <p class="mono label mb8">macierz kosztów</p>
-            <pre>for each (track, det):
-  cost[i, j] = 1.0 - iou(track_box, det_box)</pre>
-            <p class="note">IoU = 0 gdy brak nakładania → koszt = 1 (maksymalny).</p>
+            <p class="mono label mb8">normalizacja odległości centrum</p>
+            <pre>d_norm = min(1,
+  dist(c_track, c_det)
+  / max(1, 0.5·(diag_t + diag_d))
+)</pre>
+            <p class="note">Skalowanie przekątną bboxów → miara niezależna od rozmiaru obiektu.</p>
           </div>
           <div>
-            <p class="mono label mb8">dwie bramy (gating) — po przypisaniu</p>
+            <p class="mono label mb8">trzy bramy (gating) — po przypisaniu</p>
             <div class="gate-list">
               <div class="gate"><code>IoU ≥ 0.15</code> — minimalne nakładanie</div>
+              <div class="gate"><code>d_center ≤ 1.6</code> — maks. dystans centroidów</div>
               <div class="gate"><code>cost ≤ 0.92</code> — łączny koszt</div>
             </div>
             <p class="note">Pary poniżej progów → odrzucone jako unmatched, mimo wyniku Węgierskiego.</p>
@@ -367,7 +373,10 @@ P₀ → 10·I₈    (duża startowa niepewność)</pre>
           <div class="cfg-group">
             <p class="mono label mb8">asocjacja — etap 1</p>
             <div class="cfg-row"><code>iou_match_threshold</code><strong>0.15</strong></div>
+            <div class="cfg-row"><code>max_center_distance</code><strong>1.6</strong></div>
             <div class="cfg-row"><code>max_match_cost</code><strong>0.92</strong></div>
+            <div class="cfg-row"><code>weight_iou</code><strong>0.65</strong></div>
+            <div class="cfg-row"><code>weight_center_distance</code><strong>0.35</strong></div>
           </div>
           <div class="cfg-group">
             <p class="mono label mb8">asocjacja — etap 2</p>
