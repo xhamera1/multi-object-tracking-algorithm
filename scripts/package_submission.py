@@ -6,7 +6,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from scripts.defaults import DEFAULT_TEST_DATA_ROOT, DEFAULT_TEST_PRED_DIR, DEFAULT_TRACKER_CONFIG
+from scripts.constants import TEST_DATA_PATH, TEST_PREDICTIONS_PATH, CONFIG
 
 
 def _should_skip_submission_copy(path: Path) -> bool:
@@ -17,7 +17,17 @@ def _should_skip_submission_copy(path: Path) -> bool:
         return True
     if name == "submission.zip":
         return True
-    if name in {".git", ".venv", "venv", "env", ".cursor", "__pycache__", ".pytest_cache", ".mypy_cache", ".DS_Store"}:
+    if name in {
+        ".git",
+        ".venv",
+        "venv",
+        "env",
+        ".cursor",
+        "__pycache__",
+        ".pytest_cache",
+        ".mypy_cache",
+        ".DS_Store",
+    }:
         return True
     if name == "data":
         return True
@@ -34,22 +44,27 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--pred-dir",
         type=Path,
-        default=DEFAULT_TEST_PRED_DIR,
+        default=TEST_PREDICTIONS_PATH,
         help="Directory with MOT_01/06/07 .txt files (run_test writes here before packaging).",
     )
     parser.add_argument(
         "--data-root",
         type=Path,
-        default=DEFAULT_TEST_DATA_ROOT,
+        default=TEST_DATA_PATH,
         help="Test split root passed to run_test.",
     )
     parser.add_argument(
         "--config",
         type=Path,
-        default=DEFAULT_TRACKER_CONFIG,
+        default=CONFIG,
         help="Tracker yaml passed to run_test.",
     )
-    parser.add_argument("--source-dir", type=Path, default=Path("."), help="Root source directory to include.")
+    parser.add_argument(
+        "--source-dir",
+        type=Path,
+        default=Path("."),
+        help="Root source directory to include.",
+    )
     parser.add_argument(
         "--output-dir",
         type=Path,
@@ -103,7 +118,12 @@ def main() -> None:
     zip_path = args.output_dir / "submission.zip"
     if zip_path.exists():
         zip_path.unlink()
-    shutil.make_archive(str(args.output_dir / "submission"), "zip", root_dir=args.output_dir, base_dir="submission")
+    shutil.make_archive(
+        str(args.output_dir / "submission"),
+        "zip",
+        root_dir=args.output_dir,
+        base_dir="submission",
+    )
     print(f"Created: {zip_path}")
 
 

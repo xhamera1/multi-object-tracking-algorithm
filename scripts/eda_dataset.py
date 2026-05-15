@@ -1,6 +1,3 @@
-from __future__ import annotations
-
-import argparse
 import statistics
 from dataclasses import dataclass
 from pathlib import Path
@@ -9,7 +6,7 @@ from typing import Iterable
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 
-from scripts.defaults import DEFAULT_EDA_OUTPUT_DIR, DEFAULT_TRAIN_DATA_ROOT
+from scripts.constants import EDA_OUTPUT_PATH, TRAIN_DATA_PATH
 
 
 @dataclass
@@ -33,38 +30,6 @@ class GtRow:
     eval_flag: int
     cls: int
     visibility: float
-
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="EDA for MOT dataset (detections + GT + visuals).",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
-    parser.add_argument(
-        "--data-root",
-        type=Path,
-        default=DEFAULT_TRAIN_DATA_ROOT,
-        help="Path to split root, e.g. evs_mot-train.",
-    )
-    parser.add_argument(
-        "--output-dir",
-        type=Path,
-        default=DEFAULT_EDA_OUTPUT_DIR,
-        help="Directory for report and plots.",
-    )
-    parser.add_argument(
-        "--num-sequences-to-visualize",
-        type=int,
-        default=3,
-        help="How many sequences to draw visual examples for.",
-    )
-    parser.add_argument(
-        "--frames-per-sequence",
-        type=int,
-        default=3,
-        help="How many frames per sequence to visualize.",
-    )
-    return parser.parse_args()
 
 
 def read_det_file(path: Path) -> list[DetectionRow]:
@@ -129,7 +94,12 @@ def quantiles(values: list[float]) -> tuple[float, float, float]:
 
 def frame_consistency(frames: list[int]) -> dict[str, int]:
     if not frames:
-        return {"min_frame": 0, "max_frame": 0, "missing_frame_count": 0, "first_frame_is_1": 0}
+        return {
+            "min_frame": 0,
+            "max_frame": 0,
+            "missing_frame_count": 0,
+            "first_frame_is_1": 0,
+        }
     unique = sorted(set(frames))
     expected = set(range(unique[0], unique[-1] + 1))
     missing = expected.difference(unique)
@@ -178,7 +148,9 @@ def summarize_sequence(seq_dir: Path) -> dict:
         "det_conf_median": q50,
         "det_conf_q95": q95,
         "det_conf_max": max(confs) if confs else 0.0,
-        "det_per_frame_mean": statistics.fmean(dets_per_frame) if dets_per_frame else 0.0,
+        "det_per_frame_mean": (
+            statistics.fmean(dets_per_frame) if dets_per_frame else 0.0
+        ),
         "det_per_frame_q05": d05,
         "det_per_frame_median": d50,
         "det_per_frame_q95": d95,
@@ -201,7 +173,9 @@ def find_image_for_frame(img_dir: Path, frame: int) -> Path | None:
     return None
 
 
-def visualize_sequence(seq_dir: Path, output_dir: Path, frames_per_sequence: int = 3) -> Path | None:
+def visualize_sequence(
+    seq_dir: Path, output_dir: Path, frames_per_sequence: int = 3
+) -> Path | None:
     det_path = seq_dir / "det" / "det.txt"
     gt_path = seq_dir / "gt" / "gt.txt"
     img_dir = seq_dir / "img1"
@@ -241,10 +215,14 @@ def visualize_sequence(seq_dir: Path, output_dir: Path, frames_per_sequence: int
             ax.set_facecolor("black")
 
         for d in det_by_frame.get(frame, []):
-            rect = Rectangle((d.x, d.y), d.w, d.h, fill=False, color="yellow", linewidth=1.5)
+            rect = Rectangle(
+                (d.x, d.y), d.w, d.h, fill=False, color="yellow", linewidth=1.5
+            )
             ax.add_patch(rect)
         for g in gt_by_frame.get(frame, []):
-            rect = Rectangle((g.x, g.y), g.w, g.h, fill=False, color="lime", linewidth=1.5)
+            rect = Rectangle(
+                (g.x, g.y), g.w, g.h, fill=False, color="lime", linewidth=1.5
+            )
             ax.add_patch(rect)
 
         ax.set_title(f"{seq_dir.name} frame {frame}")
@@ -269,13 +247,22 @@ def aggregate_warnings(seq_summaries: list[dict]) -> list[str]:
                 f"{name}: missing detection frame ids = {s['det_frame_check']['missing_frame_count']}"
             )
         if s["det_conf_q05"] < 0.1:
-            warnings.append(f"{name}: very low confidence tail (q05={s['det_conf_q05']:.3f})")
+            warnings.append(
+                f"{name}: very low confidence tail (q05={s['det_conf_q05']:.3f})"
+            )
         if s["det_per_frame_q95"] > 20:
-            warnings.append(f"{name}: dense frames likely (det/frame q95={s['det_per_frame_q95']:.1f})")
+            warnings.append(
+                f"{name}: dense frames likely (det/frame q95={s['det_per_frame_q95']:.1f})"
+            )
     return warnings
 
 
-def write_report(path: Path, seq_summaries: list[dict], preview_paths: Iterable[Path], warnings: list[str]) -> None:
+def write_report(
+    path: Path,
+    seq_summaries: list[dict],
+    preview_paths: Iterable[Path],
+    warnings: list[str],
+) -> None:
     total_det = sum(s["detections_count"] for s in seq_summaries)
     total_gt = sum(s["gt_count"] for s in seq_summaries)
     total_invalid = sum(s["invalid_bbox_count"] for s in seq_summaries)
@@ -284,9 +271,15 @@ def write_report(path: Path, seq_summaries: list[dict], preview_paths: Iterable[
     lines.append("# EDA Report - MOT Dataset")
     lines.append("")
     lines.append("## Scope")
-    lines.append("- Detection statistics: confidence, detections-per-frame, bbox size distributions.")
-    lines.append("- Sequence consistency checks: frame index continuity and value ranges.")
-    lines.append("- Visual sanity checks: detections overlaid with GT on sample frames.")
+    lines.append(
+        "- Detection statistics: confidence, detections-per-frame, bbox size distributions."
+    )
+    lines.append(
+        "- Sequence consistency checks: frame index continuity and value ranges."
+    )
+    lines.append(
+        "- Visual sanity checks: detections overlaid with GT on sample frames."
+    )
     lines.append("")
     lines.append("## Global Summary")
     lines.append(f"- Sequences analyzed: {len(seq_summaries)}")
@@ -340,24 +333,31 @@ def write_report(path: Path, seq_summaries: list[dict], preview_paths: Iterable[
     lines.append("")
     lines.append("## Next Recommendations")
     lines.append("- Start with a robust confidence threshold search (e.g. 0.2 to 0.6).")
-    lines.append("- Tune max_age jointly with IoU threshold to control FN vs IDSW trade-off.")
+    lines.append(
+        "- Tune max_age jointly with IoU threshold to control FN vs IDSW trade-off."
+    )
     lines.append("- Inspect sequences with dense frames first if ID switches are high.")
 
     path.write_text("\n".join(lines), encoding="utf-8")
 
 
 def main() -> None:
-    args = parse_args()
-    args.output_dir.mkdir(parents=True, exist_ok=True)
+    EDA_OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
 
-    seq_dirs = sorted(p for p in args.data_root.iterdir() if p.is_dir() and (p / "det" / "det.txt").exists())
+    seq_dirs = sorted(
+        p
+        for p in TRAIN_DATA_PATH.iterdir()
+        if p.is_dir() and (p / "det" / "det.txt").exists()
+    )
     if not seq_dirs:
-        raise FileNotFoundError(f"No sequence folders with det/det.txt found in: {args.data_root}")
+        raise FileNotFoundError(
+            f"No sequence folders with det/det.txt found in: {TRAIN_DATA_PATH}"
+        )
 
     seq_summaries = [summarize_sequence(seq) for seq in seq_dirs]
     previews: list[Path] = []
-    for seq in seq_dirs[: max(0, args.num_sequences_to_visualize)]:
-        preview = visualize_sequence(seq, args.output_dir, frames_per_sequence=args.frames_per_sequence)
+    for seq in seq_dirs[:3]:
+        preview = visualize_sequence(seq, EDA_OUTPUT_PATH, frames_per_sequence=3)
         if preview:
             previews.append(preview)
 

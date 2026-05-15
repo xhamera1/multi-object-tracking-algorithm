@@ -17,14 +17,14 @@ for _p in (_SOURCE_ROOT, _SCRIPTS_DIR):
     if str(_p) not in sys.path:
         sys.path.insert(0, str(_p))
 
-from scripts.defaults import (  # noqa: E402
-    DEFAULT_GRID_CONFIG,
-    DEFAULT_GRID_SEARCH_JSON,
-    DEFAULT_TRAIN_DATA_ROOT,
-    DEFAULT_TRACKER_CONFIG,
+from scripts.constants import (
+    GRID_SEARCH_CONFIG,
+    GRID_SEARCH_RESULTS_JSON,
+    TRAIN_DATA_PATH,
+    CONFIG,
 )
-from evaluate_train import evaluate_train_metrics  # noqa: E402
-from run_train import run_train_dataset  # noqa: E402
+from evaluate_train import evaluate_train_metrics
+from run_train import run_train_dataset
 
 TRACKER_PARAM_KEYS = frozenset(
     {
@@ -102,7 +102,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--data-root",
         type=Path,
-        default=DEFAULT_TRAIN_DATA_ROOT,
+        default=TRAIN_DATA_PATH,
         help="Path to evs_mot-train (det/ per sequence).",
     )
     parser.add_argument(
@@ -114,20 +114,20 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--base-config",
         type=Path,
-        default=DEFAULT_TRACKER_CONFIG,
+        default=CONFIG,
         help="YAML z punktem startowym; siatka nadpisuje wybrane klucze. "
         "Po tuningu domyślnie ten sam plik jest zapisywany z najlepszymi parametrami (chyba że --no-write-config).",
     )
     parser.add_argument(
         "--grid-config",
         type=Path,
-        default=DEFAULT_GRID_CONFIG,
+        default=GRID_SEARCH_CONFIG,
         help="YAML with parameters: { name: [v1, v2, ...] } (Cartesian product).",
     )
     parser.add_argument(
         "--output-json",
         type=Path,
-        default=DEFAULT_GRID_SEARCH_JSON,
+        default=GRID_SEARCH_RESULTS_JSON,
         help="Where to save all trial results and the best setting.",
     )
     parser.add_argument(

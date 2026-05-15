@@ -1,58 +1,32 @@
-from __future__ import annotations
-
-import argparse
-from pathlib import Path
-
 import yaml
 
-from scripts.defaults import DEFAULT_TEST_DATA_ROOT, DEFAULT_TEST_PRED_DIR, DEFAULT_TRACKER_CONFIG
+from scripts.constants import (
+    TEST_DATA_PATH,
+    TEST_PREDICTIONS_PATH,
+    CONFIG,
+)
 
-from mot.io import load_detections, save_mot_results
-from mot.postprocess import sort_results
-from mot.tracker import MultiObjectTracker
-
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Run MOT tracker on test split.",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
-    parser.add_argument(
-        "--data-root",
-        type=Path,
-        default=DEFAULT_TEST_DATA_ROOT,
-        help="Path to evs_mot-test.",
-    )
-    parser.add_argument(
-        "--output-dir",
-        type=Path,
-        default=DEFAULT_TEST_PRED_DIR,
-        help="Output predictions dir.",
-    )
-    parser.add_argument(
-        "--config",
-        type=Path,
-        default=DEFAULT_TRACKER_CONFIG,
-        help="Tracker config yaml.",
-    )
-    return parser.parse_args()
+from scripts.io import load_detections, save_mot_results
+from scripts.postprocess import sort_results
+from scripts.tracker import Tracker
 
 
 def main() -> None:
-    args = parse_args()
-    cfg = yaml.safe_load(args.config.read_text(encoding="utf-8"))
+    cfg = yaml.safe_load(CONFIG.read_text(encoding="utf-8"))
     tracker_cfg = cfg["tracker"]
     runtime_cfg = cfg["runtime"]
 
     target_sequences = {"MOT_01", "MOT_06", "MOT_07"}
 
-    for seq_dir in sorted(p for p in args.data_root.iterdir() if p.is_dir() and p.name in target_sequences):
+    for seq_dir in sorted(
+        p for p in TEST_DATA_PATH.iterdir() if p.is_dir() and p.name in target_sequences
+    ):
         det_file = seq_dir / "det" / "det.txt"
         if not det_file.exists():
             continue
 
         detections = load_detections(det_file)
-        tracker = MultiObjectTracker(**tracker_cfg)
+        tracker = Tracker(**tracker_cfg)
         results = []
 
         by_frame = {}
@@ -69,13 +43,16 @@ def main() -> None:
             tracker.step(by_frame.get(frame, []))
             results.extend(
                 tracker.collect_frame_results(
-                    frame=frame, confirmed_only=runtime_cfg.get("save_only_confirmed", True)
+                    frame=frame,
+                    confirmed_only=runtime_cfg.get("save_only_confirmed", True),
                 )
             )
 
-        out_path = args.output_dir / f"{seq_dir.name}.txt"
+        out_path = TEST_PREDICTIONS_PATH / f"{seq_dir.name}.txt"
         save_mot_results(out_path, sort_results(results))
-        print(f"[test] saved {out_path} ({len(results)} rows, frames {min_frame}-{max_frame})")
+        print(
+            f"[test] saved {out_path} ({len(results)} rows, frames {min_frame}-{max_frame})"
+        )
 
 
 if __name__ == "__main__":

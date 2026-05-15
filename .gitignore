@@ -19,3 +19,5 @@ dist/
 # Competition / local artifacts
 submission/
 submission.zip
+
+.cursor/

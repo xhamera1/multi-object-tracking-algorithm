@@ -1,6 +1,3 @@
-from __future__ import annotations
-
-import argparse
 import colorsys
 from dataclasses import dataclass
 from pathlib import Path
@@ -8,10 +5,10 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from scripts.defaults import (
-    DEFAULT_TRAIN_DATA_ROOT,
-    DEFAULT_TRAIN_PRED_DIR,
-    DEFAULT_VIZ_OUTPUT_DIR,
+from scripts.constants import (
+    TRAIN_DATA_PATH,
+    TRAIN_PREDICTIONS_PATH,
+    VISUALIZATIONS_OUTPUT_PATH,
 )
 
 
@@ -35,47 +32,6 @@ class GtRow:
     h: float
     eval_flag: int
     cls: int
-
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Visualize tracker predictions with IDs on image frames (MP4 per sequence, OpenCV).",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
-    parser.add_argument(
-        "--data-root",
-        type=Path,
-        default=DEFAULT_TRAIN_DATA_ROOT,
-        help="Path to split root (train or test).",
-    )
-    parser.add_argument(
-        "--pred-dir",
-        type=Path,
-        default=DEFAULT_TRAIN_PRED_DIR,
-        help="Directory with MOT prediction txt files.",
-    )
-    parser.add_argument(
-        "--output-dir",
-        type=Path,
-        default=DEFAULT_VIZ_OUTPUT_DIR,
-        help="Output directory.",
-    )
-    parser.add_argument(
-        "--sequences",
-        nargs="*",
-        default=None,
-        help="Optional sequence names to visualize (e.g. MOT_02 MOT_03).",
-    )
-    parser.add_argument(
-        "--max-frames",
-        type=int,
-        default=180,
-        help="Max frames per video (consecutive from first prediction frame).",
-    )
-    parser.add_argument("--fps", type=float, default=12.0, help="Output video frame rate.")
-    parser.add_argument("--with-gt", action="store_true", help="Overlay GT boxes if gt/gt.txt exists.")
-    return parser.parse_args()
-
 
 def read_pred_rows(path: Path) -> list[TrackRow]:
     rows: list[TrackRow] = []
@@ -177,13 +133,17 @@ def draw_dashed_rect(
     def h_seg(xa: int, xb: int, yy: int) -> None:
         t = xa
         while t < xb:
-            cv2.line(img, (t, yy), (min(t + dash, xb), yy), color, thickness, cv2.LINE_AA)
+            cv2.line(
+                img, (t, yy), (min(t + dash, xb), yy), color, thickness, cv2.LINE_AA
+            )
             t += dash * 2
 
     def v_seg(ya: int, yb: int, xx: int) -> None:
         t = ya
         while t < yb:
-            cv2.line(img, (xx, t), (xx, min(t + dash, yb)), color, thickness, cv2.LINE_AA)
+            cv2.line(
+                img, (xx, t), (xx, min(t + dash, yb)), color, thickness, cv2.LINE_AA
+            )
             t += dash * 2
 
     h_seg(x, x2, y)
@@ -216,20 +176,37 @@ def render_frame_bgr(
         ty = max(th + 6, y1 - 2)
         tx0, ty0 = x1, ty - th - bl - 4
         cv2.rectangle(img, (tx0, ty0), (tx0 + tw + 4, ty0 + th + bl + 4), (0, 0, 0), -1)
-        cv2.putText(img, label, (tx0 + 2, ty0 + th + 2), font, scale, color, tthick, cv2.LINE_AA)
+        cv2.putText(
+            img, label, (tx0 + 2, ty0 + th + 2), font, scale, color, tthick, cv2.LINE_AA
+        )
 
     if with_gt:
         lime = (0, 255, 0)
         for g in gt_by_frame.get(frame, []):
-            draw_dashed_rect(img, int(g.x), int(g.y), int(g.w), int(g.h), lime, thickness=1)
+            draw_dashed_rect(
+                img, int(g.x), int(g.y), int(g.w), int(g.h), lime, thickness=1
+            )
 
     bar = f"{seq_name}  frame {frame}"
-    cv2.putText(img, bar, (8, 24), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (0, 0, 0), 3, cv2.LINE_AA)
-    cv2.putText(img, bar, (8, 24), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 255, 255), 1, cv2.LINE_AA)
+    cv2.putText(
+        img, bar, (8, 24), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (0, 0, 0), 3, cv2.LINE_AA
+    )
+    cv2.putText(
+        img,
+        bar,
+        (8, 24),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.65,
+        (255, 255, 255),
+        1,
+        cv2.LINE_AA,
+    )
     return img
 
 
-def open_mp4_writer(path: Path, fps: float, size_wh: tuple[int, int]) -> cv2.VideoWriter:
+def open_mp4_writer(
+    path: Path, fps: float, size_wh: tuple[int, int]
+) -> cv2.VideoWriter:
     w, h = size_wh
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     writer = cv2.VideoWriter(str(path), fourcc, fps, (w, h))
@@ -248,16 +225,12 @@ def open_mp4_writer(path: Path, fps: float, size_wh: tuple[int, int]) -> cv2.Vid
 
 
 def main() -> None:
-    args = parse_args()
-    args.output_dir.mkdir(parents=True, exist_ok=True)
+    VISUALIZATIONS_OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
 
-    seq_dirs = sorted(p for p in args.data_root.iterdir() if p.is_dir())
-    if args.sequences:
-        allowed = set(args.sequences)
-        seq_dirs = [p for p in seq_dirs if p.name in allowed]
+    seq_dirs = sorted(p for p in TRAIN_DATA_PATH.iterdir() if p.is_dir())
 
     for seq_dir in seq_dirs:
-        pred_file = args.pred_dir / f"{seq_dir.name}.txt"
+        pred_file = TRAIN_PREDICTIONS_PATH / f"{seq_dir.name}.txt"
         img_dir = seq_dir / "img1"
         if not pred_file.exists() or not img_dir.exists():
             continue
@@ -266,24 +239,19 @@ def main() -> None:
         if not pred_rows:
             continue
 
-        gt_rows = read_gt_rows(seq_dir / "gt" / "gt.txt") if args.with_gt else []
         pred_by_frame: dict[int, list[TrackRow]] = {}
         for r in pred_rows:
             pred_by_frame.setdefault(r.frame, []).append(r)
         gt_by_frame: dict[int, list[GtRow]] = {}
-        for g in gt_rows:
-            if g.eval_flag == 1 and g.cls == 1:
-                gt_by_frame.setdefault(g.frame, []).append(g)
 
         all_frames = sorted(pred_by_frame.keys())
         min_f, max_f = all_frames[0], all_frames[-1]
         span = max_f - min_f + 1
-        n = min(args.max_frames, span)
-        video_frames = list(range(min_f, min_f + n))
+        video_frames = list(range(min_f, min_f + span))
 
         size_wh = probe_frame_size(img_dir, video_frames)
-        out_path = args.output_dir / f"{seq_dir.name}_tracks_preview.mp4"
-        writer = open_mp4_writer(out_path, args.fps, size_wh)
+        out_path = VISUALIZATIONS_OUTPUT_PATH / f"{seq_dir.name}_tracks_preview.mp4"
+        writer = open_mp4_writer(out_path, 30, size_wh)
         try:
             for frame in video_frames:
                 bgr = render_frame_bgr(
@@ -293,7 +261,7 @@ def main() -> None:
                     size_wh,
                     pred_by_frame,
                     gt_by_frame,
-                    args.with_gt,
+                    True,
                 )
                 writer.write(bgr)
         finally:

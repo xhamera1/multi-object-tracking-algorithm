@@ -1,6 +1,3 @@
-from __future__ import annotations
-
-import argparse
 import json
 from pathlib import Path
 from typing import Any
@@ -8,14 +5,16 @@ from typing import Any
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 
-from scripts.defaults import (
-    DEFAULT_EVAL_JSON,
-    DEFAULT_TRAIN_DATA_ROOT,
-    DEFAULT_TRAIN_PRED_DIR,
+from scripts.constants import (
+    EVALUATE_TRAIN_JSON,
+    TRAIN_DATA_PATH,
+    TRAIN_PREDICTIONS_PATH,
 )
 
 
-def bbox_iou(a: tuple[float, float, float, float], b: tuple[float, float, float, float]) -> float:
+def bbox_iou(
+    a: tuple[float, float, float, float], b: tuple[float, float, float, float]
+) -> float:
     ax, ay, aw, ah = a
     bx, by, bw, bh = b
     ax2, ay2 = ax + aw, ay + ah
@@ -34,7 +33,9 @@ def bbox_iou(a: tuple[float, float, float, float], b: tuple[float, float, float,
     return inter / union
 
 
-def read_gt_rows(path: Path) -> dict[int, list[tuple[int, tuple[float, float, float, float]]]]:
+def read_gt_rows(
+    path: Path,
+) -> dict[int, list[tuple[int, tuple[float, float, float, float]]]]:
     by_frame: dict[int, list[tuple[int, tuple[float, float, float, float]]]] = {}
     with path.open("r", encoding="utf-8") as handle:
         for raw in handle:
@@ -50,7 +51,9 @@ def read_gt_rows(path: Path) -> dict[int, list[tuple[int, tuple[float, float, fl
     return by_frame
 
 
-def read_pred_rows(path: Path) -> dict[int, list[tuple[int, tuple[float, float, float, float]]]]:
+def read_pred_rows(
+    path: Path,
+) -> dict[int, list[tuple[int, tuple[float, float, float, float]]]]:
     by_frame: dict[int, list[tuple[int, tuple[float, float, float, float]]]] = {}
     if not path.exists():
         return by_frame
@@ -64,32 +67,6 @@ def read_pred_rows(path: Path) -> dict[int, list[tuple[int, tuple[float, float, 
                 (int(track_id), (float(x), float(y), float(w), float(h)))
             )
     return by_frame
-
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Evaluate train predictions (MOTA baseline).",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
-    parser.add_argument(
-        "--pred-dir",
-        type=Path,
-        default=DEFAULT_TRAIN_PRED_DIR,
-        help="Path to train prediction .txt files.",
-    )
-    parser.add_argument(
-        "--gt-root",
-        type=Path,
-        default=DEFAULT_TRAIN_DATA_ROOT,
-        help="Path to train data root with gt files.",
-    )
-    parser.add_argument(
-        "--output-file",
-        type=Path,
-        default=DEFAULT_EVAL_JSON,
-        help="Where to save JSON evaluation summary.",
-    )
-    return parser.parse_args()
 
 
 def match_frame(
@@ -164,7 +141,10 @@ def evaluate_train_metrics(pred_dir: Path, gt_root: Path) -> dict[str, Any]:
             for gt_idx, pred_idx in matches:
                 gt_id = gt_rows[gt_idx][0]
                 pred_id = pred_rows[pred_idx][0]
-                if gt_id in previous_assignment and previous_assignment[gt_id] != pred_id:
+                if (
+                    gt_id in previous_assignment
+                    and previous_assignment[gt_id] != pred_id
+                ):
                     seq_idsw += 1
                 current_assignment[gt_id] = pred_id
             previous_assignment = current_assignment
@@ -189,9 +169,13 @@ def evaluate_train_metrics(pred_dir: Path, gt_root: Path) -> dict[str, Any]:
         total_idsw += seq_idsw
 
     if not sequence_metrics:
-        raise RuntimeError("No sequences were evaluated. Check gt_root and prediction files.")
+        raise RuntimeError(
+            "No sequences were evaluated. Check gt_root and prediction files."
+        )
 
-    overall_mota = 0.0 if total_gt == 0 else 1.0 - (total_fn + total_fp + total_idsw) / total_gt
+    overall_mota = (
+        0.0 if total_gt == 0 else 1.0 - (total_fn + total_fp + total_idsw) / total_gt
+    )
     return {
         "overall": {
             "frames": float(total_frames),
@@ -206,10 +190,9 @@ def evaluate_train_metrics(pred_dir: Path, gt_root: Path) -> dict[str, Any]:
 
 
 def main() -> None:
-    args = parse_args()
-    metrics_out = evaluate_train_metrics(args.pred_dir, args.gt_root)
-    args.output_file.parent.mkdir(parents=True, exist_ok=True)
-    args.output_file.write_text(json.dumps(metrics_out, indent=2), encoding="utf-8")
+    metrics_out = evaluate_train_metrics(TRAIN_PREDICTIONS_PATH, TRAIN_DATA_PATH)
+    EVALUATE_TRAIN_JSON.parent.mkdir(parents=True, exist_ok=True)
+    EVALUATE_TRAIN_JSON.write_text(json.dumps(metrics_out, indent=2), encoding="utf-8")
     overall = metrics_out["overall"]
     overall_mota = overall["mota"]
     total_fn = int(overall["fn"])
@@ -228,7 +211,7 @@ def main() -> None:
             f"{seq_name} -> MOTA={seq['mota']:.4f}, FN={int(seq['fn'])}, FP={int(seq['fp'])}, "
             f"IDSW={int(seq['idsw'])}, GT={int(seq['gt_total'])}, FRAMES={int(seq['frames'])}"
         )
-    print(f"Saved JSON summary: {args.output_file}")
+    print(f"Saved JSON summary: {EVALUATE_TRAIN_JSON}")
 
 
 if __name__ == "__main__":
