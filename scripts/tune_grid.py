@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
-import sys
 import tempfile
 from itertools import product
 from pathlib import Path
@@ -11,20 +10,14 @@ from typing import Any
 
 import yaml
 
-_SOURCE_ROOT = Path(__file__).resolve().parent.parent
-_SCRIPTS_DIR = Path(__file__).resolve().parent
-for _p in (_SOURCE_ROOT, _SCRIPTS_DIR):
-    if str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
-
 from scripts.constants import (
     GRID_SEARCH_CONFIG,
     GRID_SEARCH_RESULTS_JSON,
     TRAIN_DATA_PATH,
     CONFIG,
 )
-from evaluate_train import evaluate_train_metrics
-from run_train import run_train_dataset
+from scripts.evaluate_train import evaluate_train_metrics
+from scripts.run_train import run_train_dataset
 
 TRACKER_PARAM_KEYS = frozenset(
     {
@@ -85,14 +78,11 @@ def parse_args() -> argparse.Namespace:
         description="Grid search tracker hyperparameters on the train split (MOTA).",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         epilog=(
-            "Domyślnie po wyszukiwaniu nadpisywany jest plik --base-config (zwykle config/default.yaml). "
-            "JSON z wynikami: --output-json.\n"
+            "Po wyszukiwaniu najlepsza konfiguracja jest zapisywana do config/default.yaml "
+            "(--base-config tylko jako punkt startowy siatki). JSON: --output-json.\n"
             "\n"
-            "Bez nadpisywania domyślnego configu (tylko JSON):\n"
+            "Bez nadpisywania default.yaml (tylko JSON):\n"
             "  python -m scripts.tune_grid --no-write-config\n"
-            "\n"
-            "Dodatkowa kopia najlepszego YAML (np. backup):\n"
-            "  python -m scripts.tune_grid --write-best-config config/best_from_grid.yaml\n"
             "\n"
             "Potem test (domyślne ścieżki):\n"
             "  python -m scripts.run_test\n"
@@ -114,8 +104,8 @@ def parse_args() -> argparse.Namespace:
         "--base-config",
         type=Path,
         default=CONFIG,
-        help="YAML z punktem startowym; siatka nadpisuje wybrane klucze. "
-        "Po tuningu domyślnie ten sam plik jest zapisywany z najlepszymi parametrami (chyba że --no-write-config).",
+        help="YAML startowy (tracker/runtime); siatka nadpisuje wybrane klucze w pamięci. "
+        "Najlepszy wynik zawsze trafia do config/default.yaml (chyba że --no-write-config).",
     )
     parser.add_argument(
         "--grid-config",
@@ -146,14 +136,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--no-write-config",
         action="store_true",
-        help="Nie zapisuj najlepszego YAML do --base-config (tylko raport JSON).",
-    )
-    parser.add_argument(
-        "--write-best-config",
-        type=Path,
-        default=None,
-        metavar="PATH",
-        help="Dodatkowo zapisz kopię najlepszego tracker+runtime do tego pliku (nie wyłącza zapisu do --base-config).",
+        help="Nie zapisuj najlepszego YAML do config/default.yaml (tylko raport JSON).",
     )
     return parser.parse_args()
 
@@ -247,20 +230,11 @@ def main() -> None:
     best_yaml = {"tracker": best["tracker"], "runtime": best["runtime"]}
     text = yaml.safe_dump(best_yaml, sort_keys=False, allow_unicode=True)
 
-    paths_to_write: list[Path] = []
     if not args.no_write_config:
-        paths_to_write.append(args.base_config.resolve())
-    if args.write_best_config is not None:
-        paths_to_write.append(args.write_best_config.resolve())
-
-    seen: set[Path] = set()
-    for path in paths_to_write:
-        if path in seen:
-            continue
-        seen.add(path)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(text, encoding="utf-8")
-        print(f"Wrote best config: {path}")
+        out_path = CONFIG.resolve()
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(text, encoding="utf-8")
+        print(f"Wrote best config: {out_path}")
 
     if not args.no_write_config:
         print(

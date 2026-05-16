@@ -1,8 +1,0 @@
-tracker:
-  det_conf_threshold: 0.2
-  det_low_conf_threshold: 0.1
-  iou_match_threshold: 0.15
-  iou_match_threshold_low: 0.5
-  max_match_cost: 0.92
-  max_age: 30
-  next_track_id_start: 1

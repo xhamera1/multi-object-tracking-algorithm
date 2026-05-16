@@ -108,8 +108,8 @@ Per sequence:
 
 ```text
 .
-├── mot/                 # Tracker core: Kalman filter, association, I/O, geometry
-├── scripts/             # CLI entry points and shared paths (defaults.py)
+├── mot/                 # Tracker library: Kalman, IoU association, I/O, types
+├── scripts/             # CLI entry points; `constants.py` for default paths
 ├── config/              # default.yaml, grid_search.yaml
 ├── notebooks/           # EDA (e.g. mot_eda.ipynb)
 ├── outputs/             # Predictions, eval JSON, EDA report, visualizations (often gitignored)

@@ -9,9 +9,7 @@ from scripts.constants import (
     TRAIN_PREDICTIONS_PATH,
 )
 
-from scripts.io import load_detections, save_mot_results
-from scripts.postprocess import sort_results
-from scripts.tracker import Tracker, TrackerConfig
+from mot import Tracker, TrackerConfig, load_detections, save_mot_results, sort_results
 
 
 def run_train_dataset(

@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Iterable
 
-from scripts.types import Detection, TrackResult
+from .types import Detection, TrackResult
 
 
 def load_detections(det_path: Path) -> list[Detection]:

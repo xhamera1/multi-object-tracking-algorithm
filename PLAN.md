@@ -71,9 +71,12 @@ To podejscie minimalizuje ryzyko "duzej, trudnej do debugowania implementacji" i
 ```text
   config/
     default.yaml
+    grid_search.yaml
   mot/
+    __init__.py
     io.py
-    geometry.py
+    types.py
+    iou.py
     kalman.py
     association.py
     tracker.py

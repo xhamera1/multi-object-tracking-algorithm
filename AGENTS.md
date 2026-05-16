@@ -38,13 +38,13 @@ Briefing for coding agents. Human narrative → `PLAN.md` / `README.md`.
 ## Code layout
 
 - `config/default.yaml` — thresholds: `det_conf_threshold`, `max_age`, IoU/gating, `w_iou`, `w_center`, etc.
-- `mot/` — `io.py`, `geometry.py`, `kalman.py`, `association.py`, `tracker.py`, `postprocess.py`
-- `scripts/` — `defaults.py` (shared default paths), `eda_dataset.py`, `run_train.py`, `run_test.py`, `evaluate_train.py`, `visualize_tracks.py`, `package_submission.py`, `tune_grid.py`
+- `mot/` — library: `io.py`, `types.py`, `iou.py`, `kalman.py`, `association.py`, `tracker.py`, `postprocess.py`
+- `scripts/` — CLIs + `constants.py` (default data/output paths); `eda_dataset.py`, `run_train.py`, `run_test.py`, `evaluate_train.py`, `visualize_tracks.py`, `package_submission.py`, `tune_grid.py`, etc.
 - Artifacts: `outputs/` (often gitignored)
 
 ## Commands (cwd = repo root)
 
-Run with `python -m scripts.<module>` so the `mot` package is on `sys.path`, or use `pip install -e .` once. Defaults assume `./data/evs_mot-*` and `./outputs/...` (see `scripts/defaults.py`); full option tables: `README.md`.
+Run with `python -m scripts.<module>` so the `mot` package is on `sys.path`, or use `pip install -e .` once. Defaults assume `./data/evs_mot-*` and `./outputs/...` (see `scripts/constants.py`); full option tables: `README.md`.
 
 ```bash
 pip install -r requirements.txt
