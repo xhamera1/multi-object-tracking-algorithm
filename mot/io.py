@@ -1,7 +1,8 @@
 from pathlib import Path
 from typing import Iterable
 
-from .types import Detection, TrackResult
+from .types import BBox
+from .tracker import Detection, TrackResult
 
 
 def load_detections(det_path: Path) -> list[Detection]:
@@ -15,10 +16,12 @@ def load_detections(det_path: Path) -> list[Detection]:
             detections.append(
                 Detection(
                     frame=int(frame),
-                    x=float(x),
-                    y=float(y),
-                    w=float(w),
-                    h=float(h),
+                    bbox=BBox(
+                        x=float(x),
+                        y=float(y),
+                        w=float(w),
+                        h=float(h),
+                    ),
                     confidence=float(conf),
                 )
             )
@@ -28,7 +31,8 @@ def load_detections(det_path: Path) -> list[Detection]:
 def save_mot_results(path: Path, rows: Iterable[TrackResult]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as handle:
-        for r in rows:
+        for row in rows:
+            bbox = row.bbox
             handle.write(
-                f"{r.frame},{r.track_id},{r.x:.2f},{r.y:.2f},{r.w:.2f},{r.h:.2f},1,-1,-1,-1\n"
+                f"{row.frame},{row.track_id},{bbox.x:.2f},{bbox.y:.2f},{bbox.w:.2f},{bbox.h:.2f},1,-1,-1,-1\n"
             )

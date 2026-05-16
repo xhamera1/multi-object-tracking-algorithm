@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import numpy as np
 from scipy.optimize import linear_sum_assignment
@@ -8,64 +8,57 @@ from scipy.optimize import linear_sum_assignment
 from .iou import box_iou_matrix
 from .types import BBox
 
-
-@dataclass
-class AssociationResult:
-    matched_track_to_detection: list[tuple[int, int]]
-    unmatched_track_indices: list[int]
-    unmatched_detection_indices: list[int]
+if TYPE_CHECKING:
+    from .tracker import Detection, Track
 
 
 def iou_cost_matrix(
     track_boxes: list[BBox],
     detection_boxes: list[BBox],
 ) -> np.ndarray:
-    """Returns `1 - IoU` with shape `(len(track_boxes), len(detection_boxes))`."""
-    t_list = list(track_boxes)
-    d_list = list(detection_boxes)
-    if not t_list or not d_list:
-        return np.empty((len(t_list), len(d_list)))
-    return 1.0 - box_iou_matrix(t_list, d_list)
+    if not track_boxes or not detection_boxes:
+        return np.empty((len(track_boxes), len(detection_boxes)))
+
+    return 1.0 - box_iou_matrix(track_boxes, detection_boxes)
 
 
-def linear_assignment_iou_match(
-    track_boxes: list[BBox],
-    detection_boxes: list[BBox],
-    iou_threshold: float = 0.3,
-    max_cost: float = 0.9,
-) -> AssociationResult:
-    if not track_boxes:
-        return AssociationResult(
-            matched_track_to_detection=[],
-            unmatched_track_indices=[],
-            unmatched_detection_indices=list(range(len(detection_boxes))),
-        )
-    if not detection_boxes:
-        return AssociationResult(
-            matched_track_to_detection=[],
-            unmatched_track_indices=list(range(len(track_boxes))),
-            unmatched_detection_indices=[],
-        )
+def match(
+    tracks: list[Track],
+    detections: list[Detection],
+    max_cost: float,
+) -> tuple[
+    list[tuple[Track, Detection]],
+    list[Track],
+    list[Detection],
+]:
+    if not tracks:
+        return [], [], detections.copy()
+    if not detections:
+        return [], tracks.copy(), []
 
-    cost = iou_cost_matrix(track_boxes, detection_boxes)
-    row_ind, col_ind = linear_sum_assignment(cost)
+    C = iou_cost_matrix(
+        [t.bbox for t in tracks],
+        [d.bbox for d in detections],
+    )
 
-    matched: list[tuple[int, int]] = []
-    unmatched_tracks = set(range(len(track_boxes)))
-    unmatched_dets = set(range(len(detection_boxes)))
+    row_ind, col_ind = linear_sum_assignment(C)
 
-    for ti, di in zip(row_ind, col_ind, strict=True):
-        c = float(cost[ti, di])
-        if c > 1.0 - iou_threshold:
+    matched = []
+    unmatched_tracks = set(range(len(tracks)))
+    unmatched_dets = set(range(len(detections)))
+
+    for track_id, det_id in zip(row_ind, col_ind, strict=True):
+
+        # reject matches with high cost
+        if C[track_id, det_id] > max_cost:
             continue
-        if c > max_cost:
-            continue
-        matched.append((ti, di))
-        unmatched_tracks.discard(ti)
-        unmatched_dets.discard(di)
 
-    return AssociationResult(
-        matched_track_to_detection=matched,
-        unmatched_track_indices=sorted(unmatched_tracks),
-        unmatched_detection_indices=sorted(unmatched_dets),
+        matched.append((tracks[track_id], detections[det_id]))
+        unmatched_tracks.remove(track_id)
+        unmatched_dets.remove(det_id)
+
+    return (
+        matched,
+        [tracks[id] for id in sorted(unmatched_tracks)],
+        [detections[id] for id in sorted(unmatched_dets)],
     )

@@ -6,8 +6,8 @@ from .types import BBox
 
 
 def box_iou(a: BBox, b: BBox) -> float:
-    ax1, ay1, aw, ah = a
-    bx1, by1, bw, bh = b
+    ax1, ay1, aw, ah = a.x, a.y, a.w, a.h
+    bx1, by1, bw, bh = b.x, b.y, b.w, b.h
     ax2, ay2 = ax1 + aw, ay1 + ah
     bx2, by2 = bx1 + bw, by1 + bh
 
@@ -37,8 +37,8 @@ def box_iou_matrix(
     if n_t == 0 or n_d == 0:
         return np.zeros((n_t, n_d), dtype=float)
 
-    t = np.asarray(track_boxes, dtype=float)
-    d = np.asarray(detection_boxes, dtype=float)
+    t = np.asarray([[t.x, t.y, t.w, t.h] for t in track_boxes], dtype=float)
+    d = np.asarray([[d.x, d.y, d.w, d.h] for d in detection_boxes], dtype=float)
 
     tx1, ty1, tw, th = t[:, 0:1], t[:, 1:2], t[:, 2:3], t[:, 3:4]
     dx1, dy1, dw, dh = d[:, 0], d[:, 1], d[:, 2], d[:, 3]

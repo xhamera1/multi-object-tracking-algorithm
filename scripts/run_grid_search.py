@@ -21,13 +21,13 @@ from scripts.run_train import run_train_dataset
 
 TRACKER_PARAM_KEYS = frozenset(
     {
-        "det_conf_threshold",
-        "det_low_conf_threshold",
-        "iou_match_threshold",
-        "iou_match_threshold_low",
-        "max_match_cost",
+        "confidence_threshold_high",
+        "confidence_threshold_low",
+        "new_track_threshold",
+        "first_match_cost_max",
+        "second_match_cost_max",
         "max_age",
-        "next_track_id_start",
+        "min_hits",
     }
 )
 RUNTIME_PARAM_KEYS = frozenset()
@@ -152,11 +152,6 @@ def main() -> None:
     grid = _load_parameter_grid(args.grid_config)
     combos = _grid_combinations(grid)
     n = len(combos)
-    if n > args.max_trials and not args.force:
-        raise SystemExit(
-            f"Grid has {n} combinations (>{args.max_trials}). "
-            "Increase --max-trials, shrink --grid-config, or pass --force."
-        )
 
     if args.work_dir is not None:
         work_root = args.work_dir.resolve()

@@ -9,7 +9,7 @@ from scripts.constants import (
     TRAIN_PREDICTIONS_PATH,
 )
 
-from mot import Tracker, TrackerConfig, load_detections, save_mot_results, sort_results
+from mot import Tracker, TrackerConfig, load_detections, save_mot_results
 
 
 def run_train_dataset(
@@ -28,23 +28,23 @@ def run_train_dataset(
         tracker = Tracker(TrackerConfig(**dict(tracker_cfg)))
         results: list = []
 
-        by_frame: dict[int, list] = {}
+        detections_by_frame: dict[int, list] = {}
         for d in detections:
-            by_frame.setdefault(d.frame, []).append(d)
+            detections_by_frame.setdefault(d.frame, []).append(d)
 
-        if not by_frame:
+        if not detections_by_frame:
             if verbose:
                 print(f"[train] skipped {seq_dir.name}: no detections")
             continue
 
-        min_frame = min(by_frame)
-        max_frame = max(by_frame)
+        min_frame = min(detections_by_frame)
+        max_frame = max(detections_by_frame)
         for frame in range(min_frame, max_frame + 1):
-            tracker.step(by_frame.get(frame, []))
-            results.extend(tracker.collect_frame_results(frame=frame))
+            detections = detections_by_frame.get(frame, [])
+            results.extend(tracker.step(detections, frame))
 
         out_path = output_dir / f"{seq_dir.name}.txt"
-        save_mot_results(out_path, sort_results(results))
+        save_mot_results(out_path, results)
         if verbose:
             print(
                 f"[train] saved {out_path} ({len(results)} rows, frames {min_frame}-{max_frame})"
