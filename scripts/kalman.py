@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import numpy as np
 
-from scripts.types import BBox
+from .types import BBox
 
 
-class Kalman:
+class KalmanBBoxFilter:
     def __init__(self, bbox: BBox) -> None:
         x, y, w, h = bbox
         self.x = np.array([x, y, w, h, 0.0, 0.0, 0.0, 0.0], dtype=float)
@@ -37,10 +39,11 @@ class Kalman:
     def update(self, bbox: BBox) -> None:
         z = np.array([[bbox[0]], [bbox[1]], [bbox[2]], [bbox[3]]], dtype=float)
         x_col = self.x.reshape(-1, 1)
-        y = z - self.H @ x_col
+        innovation = z - self.H @ x_col
         s = self.H @ self.P @ self.H.T + self.R
-        k = self.P @ self.H.T @ np.linalg.inv(s)
-        x_new = x_col + k @ y
+        ph_t = self.P @ self.H.T
+        k = np.linalg.solve(s.T, ph_t.T).T
+        x_new = x_col + k @ innovation
         self.x = x_new.flatten()
         self.P = (np.eye(8, dtype=float) - k @ self.H) @ self.P
 

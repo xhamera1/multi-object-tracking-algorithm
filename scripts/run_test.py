@@ -8,13 +8,12 @@ from scripts.constants import (
 
 from scripts.io import load_detections, save_mot_results
 from scripts.postprocess import sort_results
-from scripts.tracker import Tracker
+from scripts.tracker import Tracker, TrackerConfig
 
 
 def main() -> None:
     cfg = yaml.safe_load(CONFIG.read_text(encoding="utf-8"))
     tracker_cfg = cfg["tracker"]
-    runtime_cfg = cfg["runtime"]
 
     target_sequences = {"MOT_01", "MOT_06", "MOT_07"}
 
@@ -26,7 +25,7 @@ def main() -> None:
             continue
 
         detections = load_detections(det_file)
-        tracker = Tracker(**tracker_cfg)
+        tracker = Tracker(TrackerConfig(**tracker_cfg))
         results = []
 
         by_frame = {}
@@ -41,12 +40,7 @@ def main() -> None:
         max_frame = max(by_frame)
         for frame in range(min_frame, max_frame + 1):
             tracker.step(by_frame.get(frame, []))
-            results.extend(
-                tracker.collect_frame_results(
-                    frame=frame,
-                    confirmed_only=runtime_cfg.get("save_only_confirmed", True),
-                )
-            )
+            results.extend(tracker.collect_frame_results(frame=frame))
 
         out_path = TEST_PREDICTIONS_PATH / f"{seq_dir.name}.txt"
         save_mot_results(out_path, sort_results(results))

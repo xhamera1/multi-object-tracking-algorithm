@@ -5,7 +5,4 @@ tracker:
   iou_match_threshold_low: 0.6
   max_match_cost: 0.92
   max_age: 100
-  min_hits: 1
   next_track_id_start: 1
-runtime:
-  save_only_confirmed: true

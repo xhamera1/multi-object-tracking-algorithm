@@ -37,7 +37,7 @@ Briefing for coding agents. Human narrative → `PLAN.md` / `README.md`.
 
 ## Code layout
 
-- `config/default.yaml` — thresholds: `det_conf_threshold`, `min_hits`, `max_age`, IoU/gating, `w_iou`, `w_center`, etc.
+- `config/default.yaml` — thresholds: `det_conf_threshold`, `max_age`, IoU/gating, `w_iou`, `w_center`, etc.
 - `mot/` — `io.py`, `geometry.py`, `kalman.py`, `association.py`, `tracker.py`, `postprocess.py`
 - `scripts/` — `defaults.py` (shared default paths), `eda_dataset.py`, `run_train.py`, `run_test.py`, `evaluate_train.py`, `visualize_tracks.py`, `package_submission.py`, `tune_grid.py`
 - Artifacts: `outputs/` (often gitignored)

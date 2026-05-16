@@ -1,71 +1,71 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Sequence
 
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 
-from .iou import IOU
+from .iou import box_iou_matrix
 from .types import BBox
 
 
 @dataclass
-class MatchResult:
-    matches: list[tuple[int, int]]
-    unmatched_tracks: list[int]
-    unmatched_detections: list[int]
+class AssociationResult:
+    matched_track_to_detection: list[tuple[int, int]]
+    unmatched_track_indices: list[int]
+    unmatched_detection_indices: list[int]
 
 
-def build_iou_cost_matrix(
-    track_boxes: Sequence[BBox],
-    det_boxes: Sequence[BBox],
+def iou_cost_matrix(
+    track_boxes: list[BBox],
+    detection_boxes: list[BBox],
 ) -> np.ndarray:
-    if not track_boxes or not det_boxes:
-        return np.empty((len(track_boxes), len(det_boxes)))
-    matrix = np.zeros((len(track_boxes), len(det_boxes)), dtype=float)
-    for i, tbox in enumerate(track_boxes):
-        for j, dbox in enumerate(det_boxes):
-            matrix[i, j] = 1.0 - IOU(tbox, dbox)
-    return matrix
+    """Returns `1 - IoU` with shape `(len(track_boxes), len(detection_boxes))`."""
+    t_list = list(track_boxes)
+    d_list = list(detection_boxes)
+    if not t_list or not d_list:
+        return np.empty((len(t_list), len(d_list)))
+    return 1.0 - box_iou_matrix(t_list, d_list)
 
 
-def hungarian_match(
-    track_boxes: Sequence[BBox],
-    det_boxes: Sequence[BBox],
+def linear_assignment_iou_match(
+    track_boxes: list[BBox],
+    detection_boxes: list[BBox],
     iou_threshold: float = 0.3,
     max_cost: float = 0.9,
-) -> MatchResult:
+) -> AssociationResult:
     if not track_boxes:
-        return MatchResult(
-            matches=[],
-            unmatched_tracks=[],
-            unmatched_detections=list(range(len(det_boxes))),
+        return AssociationResult(
+            matched_track_to_detection=[],
+            unmatched_track_indices=[],
+            unmatched_detection_indices=list(range(len(detection_boxes))),
         )
-    if not det_boxes:
-        return MatchResult(
-            matches=[],
-            unmatched_tracks=list(range(len(track_boxes))),
-            unmatched_detections=[],
+    if not detection_boxes:
+        return AssociationResult(
+            matched_track_to_detection=[],
+            unmatched_track_indices=list(range(len(track_boxes))),
+            unmatched_detection_indices=[],
         )
 
-    cost = build_iou_cost_matrix(track_boxes, det_boxes)
+    cost = iou_cost_matrix(track_boxes, detection_boxes)
     row_ind, col_ind = linear_sum_assignment(cost)
 
-    matches: list[tuple[int, int]] = []
+    matched: list[tuple[int, int]] = []
     unmatched_tracks = set(range(len(track_boxes)))
-    unmatched_dets = set(range(len(det_boxes)))
+    unmatched_dets = set(range(len(detection_boxes)))
 
-    for ti, di in zip(row_ind, col_ind):
-        iou = IOU(track_boxes[ti], det_boxes[di])
-        if iou < iou_threshold:
+    for ti, di in zip(row_ind, col_ind, strict=True):
+        c = float(cost[ti, di])
+        if c > 1.0 - iou_threshold:
             continue
-        if cost[ti, di] > max_cost:
+        if c > max_cost:
             continue
-        matches.append((ti, di))
+        matched.append((ti, di))
         unmatched_tracks.discard(ti)
         unmatched_dets.discard(di)
 
-    return MatchResult(
-        matches=matches,
-        unmatched_tracks=sorted(unmatched_tracks),
-        unmatched_detections=sorted(unmatched_dets),
+    return AssociationResult(
+        matched_track_to_detection=matched,
+        unmatched_track_indices=sorted(unmatched_tracks),
+        unmatched_detection_indices=sorted(unmatched_dets),
     )

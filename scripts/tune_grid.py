@@ -34,11 +34,10 @@ TRACKER_PARAM_KEYS = frozenset(
         "iou_match_threshold_low",
         "max_match_cost",
         "max_age",
-        "min_hits",
         "next_track_id_start",
     }
 )
-RUNTIME_PARAM_KEYS = frozenset({"save_only_confirmed"})
+RUNTIME_PARAM_KEYS = frozenset()
 
 
 def _load_parameter_grid(path: Path) -> dict[str, list[Any]]:
@@ -197,7 +196,6 @@ def main() -> None:
                 args.data_root,
                 trial_dir,
                 tracker_cfg,
-                runtime_cfg,
                 verbose=not args.quiet,
             )
             metrics = evaluate_train_metrics(trial_dir, gt_root)
