@@ -1,6 +1,6 @@
 from typing import Iterable
 
-from .io import TrackResult
+from .types import TrackResult
 
 
 def sort_results(results: Iterable[TrackResult]) -> list[TrackResult]:

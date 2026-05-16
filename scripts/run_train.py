@@ -19,7 +19,6 @@ def run_train_dataset(
     output_dir: Path,
     tracker_cfg: Mapping[str, Any],
     runtime_cfg: Mapping[str, Any],
-    *,
     verbose: bool = True,
 ) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)

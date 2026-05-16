@@ -1,11 +1,11 @@
 import numpy as np
 
-from .iou import BBox
+from scripts.types import BBox
 
 
 class Kalman:
-    def __init__(self, initial_bbox: BBox) -> None:
-        x, y, w, h = initial_bbox
+    def __init__(self, bbox: BBox) -> None:
+        x, y, w, h = bbox
         self.x = np.array([x, y, w, h, 0.0, 0.0, 0.0, 0.0], dtype=float)
 
         self.F = np.eye(8, dtype=float)

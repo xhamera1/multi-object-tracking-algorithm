@@ -1,9 +1,8 @@
 from dataclasses import dataclass
-from typing import Sequence, Tuple
+from typing import Sequence
 
 from .association import hungarian_match
-from .io import Detection, TrackResult
-from .iou import BBox
+from .types import Detection, TrackResult, BBox
 from .kalman import Kalman
 
 
@@ -58,8 +57,14 @@ class Tracker:
         return track
 
     def step(self, frame_detections: Sequence[Detection]) -> None:
-        high_score_dets = [d for d in frame_detections if d.confidence >= self.det_conf_threshold]
-        low_score_dets = [d for d in frame_detections if self.det_low_conf_threshold <= d.confidence < self.det_conf_threshold]
+        high_score_dets = [
+            d for d in frame_detections if d.confidence >= self.det_conf_threshold
+        ]
+        low_score_dets = [
+            d
+            for d in frame_detections
+            if self.det_low_conf_threshold <= d.confidence < self.det_conf_threshold
+        ]
 
         high_score_boxes: list[BBox] = [(d.x, d.y, d.w, d.h) for d in high_score_dets]
         low_score_boxes: list[BBox] = [(d.x, d.y, d.w, d.h) for d in low_score_dets]
@@ -68,7 +73,7 @@ class Tracker:
             track.predict()
 
         track_boxes = [t.bbox for t in self.tracks]
-        
+
         # First Stage
         match_result = hungarian_match(
             track_boxes,
@@ -83,17 +88,19 @@ class Tracker:
         # Second Stage
         # For unmatched tracks, try to match with low score detections using only IoU
         unmatched_track_indices = [
-            i for i in match_result.unmatched_tracks if self.tracks[i].hits >= self.min_hits
+            i
+            for i in match_result.unmatched_tracks
+            if self.tracks[i].hits >= self.min_hits
         ]
         unmatched_track_boxes = [self.tracks[i].bbox for i in unmatched_track_indices]
-        
+
         match_result_low = hungarian_match(
             unmatched_track_boxes,
             low_score_boxes,
             iou_threshold=self.iou_match_threshold_low,
             max_cost=1.0,
         )
-        
+
         for local_track_idx, det_idx in match_result_low.matches:
             track_idx = unmatched_track_indices[local_track_idx]
             self.tracks[track_idx].update(low_score_boxes[det_idx])
@@ -104,7 +111,9 @@ class Tracker:
 
         self.tracks = [t for t in self.tracks if t.time_since_update <= self.max_age]
 
-    def collect_frame_results(self, frame: int, confirmed_only: bool = True) -> list[TrackResult]:
+    def collect_frame_results(
+        self, frame: int, confirmed_only: bool = True
+    ) -> list[TrackResult]:
         rows: list[TrackResult] = []
         for track in self.tracks:
             if track.time_since_update > 0:

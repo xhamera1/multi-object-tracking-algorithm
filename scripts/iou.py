@@ -1,7 +1,4 @@
-from typing import Tuple
-
-BBox = Tuple[float, float, float, float]
-
+from scripts.types import BBox
 
 def IOU(a: BBox, b: BBox) -> float:
     ax1, ay1, aw, ah = a

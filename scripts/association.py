@@ -4,7 +4,8 @@ from typing import Sequence
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 
-from .iou import IOU, BBox
+from .iou import IOU
+from .types import BBox
 
 
 @dataclass

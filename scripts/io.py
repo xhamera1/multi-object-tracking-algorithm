@@ -1,26 +1,7 @@
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
-
-@dataclass
-class Detection:
-    frame: int
-    x: float
-    y: float
-    w: float
-    h: float
-    confidence: float
-
-
-@dataclass
-class TrackResult:
-    frame: int
-    track_id: int
-    x: float
-    y: float
-    w: float
-    h: float
+from scripts.types import Detection, TrackResult
 
 
 def load_detections(det_path: Path) -> list[Detection]:
